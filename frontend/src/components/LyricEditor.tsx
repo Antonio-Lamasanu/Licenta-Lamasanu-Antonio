@@ -3,13 +3,12 @@ import { fetchSyllableCounts } from "../api/syllables";
 
 const DEBOUNCE_MS = 400;
 
-export default function LyricEditor() {
-  // Toggle VITE_DEBUG_LYRICS in .env — restart dev server after changing it
-  const debugLyrics = import.meta.env.VITE_DEBUG_LYRICS === 'true'
-    ? (import.meta.env.VITE_DEBUG_LYRICS_TEXT ?? '').replace(/\\n/g, '\n').replace(/^"|"$/g, '')
-    : ''
-  console.log('DEBUG_LYRICS env:', import.meta.env.VITE_DEBUG_LYRICS)
-  const [text, setText] = useState(debugLyrics);
+interface LyricEditorProps {
+  content: string;
+  onContentChange: (value: string) => void;
+}
+
+export default function LyricEditor({ content, onContentChange }: LyricEditorProps) {
   const [counts, setCounts] = useState<number[]>([]);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -21,31 +20,21 @@ export default function LyricEditor() {
   }, []);
 
   useEffect(() => {
-    if (debounceTimer.current !== null) {
-      clearTimeout(debounceTimer.current);
-    }
-    debounceTimer.current = setTimeout(() => {
-      updateCounts(text);
-    }, DEBOUNCE_MS);
-
+    if (debounceTimer.current !== null) clearTimeout(debounceTimer.current);
+    debounceTimer.current = setTimeout(() => updateCounts(content), DEBOUNCE_MS);
     return () => {
-      if (debounceTimer.current !== null) {
-        clearTimeout(debounceTimer.current);
-      }
+      if (debounceTimer.current !== null) clearTimeout(debounceTimer.current);
     };
-  }, [text, updateCounts]);
+  }, [content, updateCounts]);
 
-  const lines = text.split("\n");
+  const lines = content.split("\n");
 
   return (
-    <div className="flex gap-4 w-full max-w-3xl mx-auto mt-10 px-4">
-      {/* Line numbers + syllable counts */}
+    <div className="flex gap-4 w-full">
+      {/* Syllable counts */}
       <div className="flex flex-col text-right select-none min-w-[3rem]">
         {lines.map((_: string, i: number) => (
-          <div
-            key={i}
-            className="leading-6 text-sm text-zinc-400 font-mono h-6"
-          >
+          <div key={i} className="leading-6 text-sm text-zinc-400 font-mono h-6">
             {counts[i] !== undefined && counts[i] > 0 ? counts[i] : ""}
           </div>
         ))}
@@ -55,8 +44,8 @@ export default function LyricEditor() {
       <textarea
         className="flex-1 bg-transparent resize-none outline-none font-mono text-sm leading-6 text-zinc-100 placeholder-zinc-600 h-[70vh]"
         placeholder="Start writing your lyrics..."
-        value={text}
-        onChange={(e) => setText(e.target.value)}
+        value={content}
+        onChange={(e) => onContentChange(e.target.value)}
         spellCheck={false}
         wrap="off"
       />

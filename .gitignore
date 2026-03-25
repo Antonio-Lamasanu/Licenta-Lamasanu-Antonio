@@ -4,6 +4,7 @@ backend/.venv/
 backend/__pycache__/
 backend/*.pyc
 backend/.env
+backend/notes.db
 
 # Node.js / Frontend
 frontend/node_modules/
