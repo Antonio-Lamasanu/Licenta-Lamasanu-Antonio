@@ -19,3 +19,16 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+
+# Logs
+*.log
+
+# Test / coverage
+.pytest_cache/
+backend/.pytest_cache/
+backend/htmlcov/
+backend/.coverage
+
+# Build artifacts
+frontend/build/
+*.egg-info/

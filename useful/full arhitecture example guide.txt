@@ -1,0 +1,31 @@
+lyricpad/
+│
+├── frontend/                  ← React + Vite + TypeScript
+│   ├── src/
+│   │   ├── features/
+│   │   │   ├── editor/
+│   │   │   ├── rhymeDictionary/
+│   │   │   └── ai/
+│   │   ├── lib/               ← Only pure UI logic here
+│   │   │   └── editorDecorations.ts
+│   │   └── api/               ← All fetch calls live here
+│   │       ├── rhymes.ts      ← calls YOUR backend, not Datamuse directly
+│   │       ├── syllables.ts   ← calls YOUR backend
+│   │       └── ai.ts          ← calls YOUR backend
+│   └── package.json
+│
+└── backend/                   ← Python + FastAPI
+    ├── app/
+    │   ├── main.py
+    │   ├── routers/
+    │   │   ├── rhymes.py      ← wraps Datamuse (or your own dict later)
+    │   │   ├── syllables.py   ← uses `pronouncing` / CMU dict
+    │   │   └── ai.py          ← swap Anthropic ↔ local model here
+    │   ├── services/
+    │   │   ├── rhyme_service.py
+    │   │   ├── syllable_service.py
+    │   │   └── ai_service.py  ← the only file you change when switching models
+    │   └── core/
+    │       └── config.py      ← env vars, API keys, model paths
+    ├── requirements.txt
+    └── .env                   ← ANTHROPIC_API_KEY lives here, never in frontend
