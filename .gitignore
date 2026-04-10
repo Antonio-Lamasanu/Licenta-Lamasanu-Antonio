@@ -16,6 +16,10 @@ frontend/.env.local
 .DS_Store
 Thumbs.db
 
+# Claude
+CLAUDE.md
+.claudeignore
+
 # IDE
 .vscode/
 .idea/
