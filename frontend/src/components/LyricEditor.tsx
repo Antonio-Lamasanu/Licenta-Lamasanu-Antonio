@@ -4,14 +4,26 @@ import { fetchAnalysis, type SyllableInfo, type SyllableGroup } from "../api/syl
 const DEBOUNCE_MS = 400;
 
 const RHYME_COLORS = [
-  "rgba(239,68,68,0.35)",
-  "rgba(59,130,246,0.35)",
-  "rgba(34,197,94,0.35)",
-  "rgba(234,179,8,0.35)",
-  "rgba(168,85,247,0.35)",
-  "rgba(249,115,22,0.35)",
-  "rgba(20,184,166,0.35)",
-  "rgba(236,72,153,0.35)",
+  "rgba(239,68,68,0.35)",    // red
+  "rgba(59,130,246,0.35)",   // blue
+  "rgba(34,197,94,0.35)",    // green
+  "rgba(234,179,8,0.35)",    // yellow
+  "rgba(168,85,247,0.35)",   // purple
+  "rgba(249,115,22,0.35)",   // orange
+  "rgba(20,184,166,0.35)",   // teal
+  "rgba(236,72,153,0.35)",   // pink
+  "rgba(14,165,233,0.35)",   // sky
+  "rgba(132,204,22,0.35)",   // lime
+  "rgba(245,158,11,0.35)",   // amber
+  "rgba(244,63,94,0.35)",    // rose
+  "rgba(139,92,246,0.35)",   // violet
+  "rgba(16,185,129,0.35)",   // emerald
+  "rgba(217,70,239,0.35)",   // fuchsia
+  "rgba(6,182,212,0.35)",    // cyan
+  "rgba(99,102,241,0.35)",   // indigo
+  "rgba(251,113,133,0.35)",  // coral
+  "rgba(163,230,53,0.35)",   // yellow-green
+  "rgba(251,146,60,0.35)",   // deep orange
 ];
 
 // Shared style values — must be identical on mirror div and textarea
@@ -28,9 +40,11 @@ const EDITOR_STYLE = {
 interface LyricEditorProps {
   content: string;
   onContentChange: (value: string) => void;
+  onSelectionChange?: (text: string) => void;
+  onCursorChange?: (query: string) => void;
 }
 
-export default function LyricEditor({ content, onContentChange }: LyricEditorProps) {
+export default function LyricEditor({ content, onContentChange, onSelectionChange, onCursorChange }: LyricEditorProps) {
   const [counts, setCounts] = useState<number[]>([]);
   const [syllableData, setSyllableData] = useState<SyllableInfo[][][]>([]);
   const [syllableColorMap, setSyllableColorMap] = useState<Map<string, number>>(new Map());
@@ -74,6 +88,70 @@ export default function LyricEditor({ content, onContentChange }: LyricEditorPro
   }, [content]);
 
   const lines = content.split("\n");
+
+  function handleSelectionChange() {
+    if (!onSelectionChange && !onCursorChange) return;
+    const el = textareaRef.current;
+    if (!el) return;
+    const { selectionStart, selectionEnd, value } = el;
+
+    if (selectionStart === selectionEnd) {
+      onSelectionChange?.("");
+      if (onCursorChange) {
+        const lineStart = value.lastIndexOf("\n", selectionStart - 1) + 1;
+        const textBefore = value.slice(lineStart, selectionStart);
+        let beforeWords: string[] = textBefore.match(/\S+/g) ?? [];
+        // Drop last token only if cursor is mid-word: word chars on both sides
+        if (
+          selectionStart > 0 &&
+          selectionStart < value.length &&
+          /\w/.test(value[selectionStart - 1]) &&
+          /\w/.test(value[selectionStart])
+        ) {
+          beforeWords = beforeWords.slice(0, -1);
+        }
+        beforeWords = beforeWords.slice(-3);
+        onCursorChange(beforeWords.length > 0 ? beforeWords.join(" ") : "");
+      }
+      return;
+    }
+
+    const selected = value.slice(selectionStart, selectionEnd);
+
+    // Multi-line selection → ignore
+    if (selected.includes("\n")) return;
+
+    let words: string[] = selected.match(/\S+/g) ?? [];
+    if (words.length === 0) return;
+
+    // If the char before the selection is a word char AND the selection itself
+    // starts with a non-space, the first token is a partial word fragment → drop it
+    if (
+      selectionStart > 0 &&
+      /\w/.test(value[selectionStart - 1]) &&
+      /\S/.test(selected[0])
+    ) {
+      words = words.slice(1);
+    }
+
+    // If the char after the selection is a word char AND the selection ends
+    // with a non-space, the last token is a partial word fragment → drop it
+    if (
+      selectionEnd < value.length &&
+      /\w/.test(value[selectionEnd]) &&
+      /\S/.test(selected[selected.length - 1])
+    ) {
+      words = words.slice(0, -1);
+    }
+
+    if (words.length === 0) return;
+
+    const query = words.join(" ");
+    if (query.length < 2) return;
+    if (words.length > 5) return;
+
+    onSelectionChange?.(query);
+  }
 
   function renderLine(line: string, lineIdx: number): React.ReactNode {
     const tokens = line.split(/(\s+)/);
@@ -173,6 +251,8 @@ export default function LyricEditor({ content, onContentChange }: LyricEditorPro
           placeholder="Start writing your lyrics..."
           value={content}
           onChange={(e) => onContentChange(e.target.value)}
+          onMouseUp={handleSelectionChange}
+          onKeyUp={handleSelectionChange}
           spellCheck={false}
           wrap="off"
         />

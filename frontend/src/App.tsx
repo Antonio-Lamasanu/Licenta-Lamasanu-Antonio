@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import LyricEditor from "./components/LyricEditor";
 import NotesSidebar from "./components/NotesSidebar";
+import RhymeDictionary from "./components/RhymeDictionary";
 import { useAutoSave } from "./hooks/useAutoSave";
 import { fetchNotes, createNote, deleteNote } from "./api/notes";
 import type { Note } from "./types/note";
@@ -10,6 +11,10 @@ export default function App() {
   const [activeNoteId, setActiveNoteId] = useState<number | null>(null);
   const [activeTitle, setActiveTitle] = useState("");
   const [activeContent, setActiveContent] = useState("");
+
+  const [rhymeQuery, setRhymeQuery] = useState("");
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [autoMode, setAutoMode] = useState(false);
 
   const { saveStatus, setLastSaved } = useAutoSave(activeNoteId, activeTitle, activeContent);
 
@@ -102,6 +107,8 @@ export default function App() {
           onSelectNote={handleSelectNote}
           onNewNote={handleNewNote}
           onDeleteNote={handleDeleteNote}
+          isOpen={sidebarOpen}
+          onToggle={() => setSidebarOpen((o) => !o)}
         />
 
         <main className="flex-1 overflow-y-auto px-8 pt-6">
@@ -120,10 +127,19 @@ export default function App() {
               <LyricEditor
                 content={activeContent}
                 onContentChange={setActiveContent}
+                onSelectionChange={(q) => { if (!autoMode) setRhymeQuery(q); }}
+                onCursorChange={(q) => { if (autoMode) setRhymeQuery(q); }}
               />
             </>
           )}
         </main>
+
+        <RhymeDictionary
+          query={rhymeQuery}
+          onQueryChange={setRhymeQuery}
+          autoMode={autoMode}
+          onAutoModeToggle={() => setAutoMode((o) => !o)}
+        />
       </div>
     </div>
   );

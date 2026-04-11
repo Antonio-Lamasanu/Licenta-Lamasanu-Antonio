@@ -6,7 +6,9 @@ from pydantic import BaseModel
 import cmudict
 import pyphen
 import re
+from english_words import get_english_words_set
 import sqlite3
+from itertools import combinations
 import os
 from datetime import datetime, timezone
 from dotenv import load_dotenv
@@ -15,12 +17,48 @@ load_dotenv()
 
 _cmudict = cmudict.dict()
 _pyphen = pyphen.Pyphen(lang='en_US')
+_english_words: frozenset[str] = frozenset(
+    get_english_words_set(['web2'], lower=True, alpha=True)
+)
+
+
+def _rhyme_tail(phonemes: list[str]) -> tuple[str, ...] | None:
+    """Return the rhyme-determining suffix starting from the last stressed vowel.
+
+    Strips stress digits so 'AH0' and 'AH1' are treated as the same phoneme.
+    Returns None if no stressed vowel is found.
+    """
+    for i in range(len(phonemes) - 1, -1, -1):
+        if phonemes[i][-1] in '12':
+            return tuple(p.rstrip('012') for p in phonemes[i:])
+    return None
+
+
+# Reverse index: rhyme tail → list of words sharing that tail
+_rhyme_index: dict[tuple[str, ...], list[str]] = {}
+for _w, _prons in _cmudict.items():
+    _tail = _rhyme_tail(_prons[0])
+    if _tail:
+        _rhyme_index.setdefault(_tail, []).append(_w)
 
 VOWEL_PHONEMES = frozenset([
     'AA', 'AE', 'AH', 'AO', 'AW', 'AY',
     'EH', 'ER', 'EY', 'IH', 'IY',
     'OW', 'OY', 'UH', 'UW',
 ])
+
+
+def _vowel_seq(phonemes: list[str]) -> tuple[str, ...]:
+    """Vowels-only sequence from a phoneme list, stress digits stripped."""
+    return tuple(p.rstrip('012') for p in phonemes if p.rstrip('012') in VOWEL_PHONEMES)
+
+
+# Vowel-sequence index: vowel_seq → list of words with exactly that sequence
+_vowel_seq_index: dict[tuple[str, ...], list[str]] = {}
+for _w, _prons in _cmudict.items():
+    _vseq = _vowel_seq(_prons[0])
+    if _vseq:
+        _vowel_seq_index.setdefault(_vseq, []).append(_w)
 
 FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN", "http://localhost:5173")
 DB_PATH = os.getenv("DB_PATH", "notes.db")
@@ -101,6 +139,29 @@ class AnalyzeResponse(BaseModel):
     line_counts: list[int]
     syllable_data: list[list[list[SyllableInfo]]]  # [line][word][syllable]
     syllable_groups: list[SyllableGroup]
+
+
+# --- Rhyme models ---
+
+class RhymeRequest(BaseModel):
+    query: str
+
+
+class RhymeColumn(BaseModel):
+    chunk: str                            # display label, e.g. "she wants"
+    anchor: str                           # last word being rhymed, e.g. "wants"
+    chunk_phonemes: list[str]             # vowel phonemes per word in chunk, e.g. ["IH", "AO IY"]
+    rhymes_by_syllables: dict[str, list[str]]
+    other_rhymes_by_syllables: dict[str, list[str]]
+
+
+class RhymeSection(BaseModel):
+    columns: list[RhymeColumn]
+
+
+class RhymeResponse(BaseModel):
+    words: list[str]
+    sections: list[RhymeSection]
 
 
 # --- Note models ---
@@ -282,6 +343,148 @@ def analyze(request: AnalyzeRequest) -> AnalyzeResponse:
         syllable_data=syllable_data,
         syllable_groups=syllable_groups,
     )
+
+
+# --- Rhyme helpers ---
+
+def _partitions(words: list[str]) -> list[list[list[str]]]:
+    """All contiguous partitions of words, ordered by number of groups (1 → N)."""
+    n = len(words)
+    result: list[list[list[str]]] = []
+    for num_groups in range(1, n + 1):
+        for splits in combinations(range(1, n), num_groups - 1):
+            groups: list[list[str]] = []
+            prev = 0
+            for sp in splits:
+                groups.append(words[prev:sp])
+                prev = sp
+            groups.append(words[prev:])
+            result.append(groups)
+    return result
+
+
+def _syllable_count(word: str) -> int:
+    prons = _cmudict.get(word)
+    if prons:
+        return sum(1 for p in prons[0] if p[-1].isdigit())
+    return 1
+
+
+def _is_english(phrase: str) -> bool:
+    """Return True if every word in the phrase is a common English word."""
+    return all(p in _english_words for p in phrase.split())
+
+
+def _rhymes_for_chunk(group: list[str]) -> tuple[dict[str, list[str]], dict[str, list[str]]]:
+    """Return (rhymes_by_syllables, other_rhymes_by_syllables) for a chunk.
+
+    rhymes_by_syllables contains common English words/phrases.
+    other_rhymes_by_syllables contains proper nouns, abbreviations, and other
+    entries from the CMU dict that are not in the standard English word list.
+
+    Single word: classic rhyme-tail matching (true rhymes).
+    Multi-word: vowel-sequence matching across the full chunk — returns
+    single words and 2-word phrases whose combined vowel sequence equals
+    the chunk's vowel sequence.
+    """
+    by_syl: dict[str, list[str]] = {}
+    other_by_syl: dict[str, list[str]] = {}
+
+    def _add(r: str) -> None:
+        parts = r.split()
+        count = str(sum(_syllable_count(p) for p in parts))
+        if _is_english(r):
+            bucket = by_syl.setdefault(count, [])
+            if len(bucket) < BUCKET_LIMIT:
+                bucket.append(r)
+        else:
+            bucket = other_by_syl.setdefault(count, [])
+            if len(bucket) < BUCKET_LIMIT:
+                bucket.append(r)
+
+    BUCKET_LIMIT = 50
+
+    if len(group) == 1:
+        anchor = group[0]
+        prons = _cmudict.get(anchor)
+        tail = _rhyme_tail(prons[0]) if prons else None
+        for r in (_rhyme_index.get(tail, []) if tail else []):
+            if r != anchor:
+                _add(r)
+        return by_syl, other_by_syl
+
+    # Multi-word: build the target vowel sequence from all words in the group
+    target_seq: list[str] = []
+    for w in group:
+        prons = _cmudict.get(w)
+        if prons:
+            target_seq.extend(_vowel_seq(prons[0]))
+    if not target_seq:
+        return by_syl, other_by_syl
+    target = tuple(target_seq)
+    exclude = set(group)
+
+    # 1. Single words whose vowel sequence matches exactly
+    candidates: list[str] = [
+        w for w in _vowel_seq_index.get(target, []) if w not in exclude
+    ]
+
+    # 2. Two-word phrases: split target at every position
+    HALF_LIMIT = 25
+    n = len(target)
+    for k in range(1, n):
+        seq1 = target[:k]
+        seq2 = target[k:]
+        words1 = [w for w in _vowel_seq_index.get(seq1, []) if w not in exclude][:HALF_LIMIT]
+        words2 = [w for w in _vowel_seq_index.get(seq2, []) if w not in exclude][:HALF_LIMIT]
+        for w1 in words1:
+            for w2 in words2:
+                if w1 != w2:
+                    candidates.append(f"{w1} {w2}")
+
+    for r in candidates:
+        _add(r)
+
+    return by_syl, other_by_syl
+
+
+def _chunk_phonemes(group: list[str]) -> list[str]:
+    """Return a vowel-phoneme string for each word in the group."""
+    result = []
+    for w in group:
+        prons = _cmudict.get(w)
+        if prons:
+            vowels = [p.rstrip('012') for p in prons[0] if p.rstrip('012') in VOWEL_PHONEMES]
+            result.append(" ".join(vowels))
+        else:
+            result.append("")
+    return result
+
+
+# --- Rhyme endpoint ---
+
+@app.post("/api/rhymes", response_model=RhymeResponse)
+def get_rhymes(request: RhymeRequest) -> RhymeResponse:
+    raw = request.query.strip().split()[:5]
+    words = [re.sub(r"[^\w']", "", w).lower() for w in raw]
+    words = [w for w in words if w]
+
+    sections: list[RhymeSection] = []
+    for partition in _partitions(words):
+        columns: list[RhymeColumn] = []
+        for group in partition:
+            anchor = group[-1]
+            rhymes_en, rhymes_other = _rhymes_for_chunk(group)
+            columns.append(RhymeColumn(
+                chunk=" ".join(group),
+                anchor=anchor,
+                chunk_phonemes=_chunk_phonemes(group),
+                rhymes_by_syllables=rhymes_en,
+                other_rhymes_by_syllables=rhymes_other,
+            ))
+        sections.append(RhymeSection(columns=columns))
+
+    return RhymeResponse(words=words, sections=sections)
 
 
 # --- Notes endpoints ---
