@@ -1,0 +1,20 @@
+services:
+  backend:
+    build: ./backend
+    expose:
+      - "8000"
+    environment:
+      - FRONTEND_ORIGIN=http://localhost:5173
+      - DB_PATH=/data/notes.db
+    volumes:
+      - ./backend/notes.db:/data/notes.db
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: ""
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend

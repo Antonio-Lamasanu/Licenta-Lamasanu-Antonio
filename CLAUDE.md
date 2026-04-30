@@ -29,6 +29,12 @@ npm run build    # production build
 npm run preview  # serve production build
 ```
 
+**Docker** (from project root):
+```bash
+docker compose up --build
+```
+Frontend served at `:5173` via Nginx, which proxies `/api/` to the backend container. `VITE_API_URL` is set to `""` so the frontend uses relative paths; Nginx handles routing.
+
 There are no automated tests. The app has no test runner configured.
 
 ## Architecture rules — follow these strictly
@@ -79,9 +85,13 @@ There are no automated tests. The app has no test runner configured.
 | File | Purpose |
 |------|---------|
 | `backend/main.py` | FastAPI app, all endpoints, SQLite init, syllabification logic |
+| `backend/Dockerfile` | Python 3.11-slim image, runs Uvicorn |
 | `frontend/src/api/notes.ts` | CRUD operations for notes |
 | `frontend/src/api/syllables.ts` | `/api/analyze` and `/api/syllables` calls + shared TS types |
 | `frontend/src/components/LyricEditor.tsx` | Mirror-div editor, rhyme highlight rendering |
 | `frontend/src/components/NotesSidebar.tsx` | Note list + new/delete |
 | `frontend/src/hooks/useAutoSave.ts` | 1-second debounce auto-save |
 | `frontend/src/types/note.ts` | `Note` TypeScript interface |
+| `frontend/Dockerfile` | Multi-stage: Node 20 build → Nginx serve |
+| `frontend/nginx.conf` | Serves SPA, proxies `/api/` to backend container |
+| `docker-compose.yml` | Wires backend + frontend; mounts `notes.db` as volume |

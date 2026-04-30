@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "fix": "^0.0.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
@@ -20,6 +21,6 @@
     "postcss": "^8.4.40",
     "tailwindcss": "^3.4.9",
     "typescript": "^5.5.3",
-    "vite": "^5.3.5"
+    "vite": "^8.0.8"
   }
 }
