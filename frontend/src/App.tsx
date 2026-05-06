@@ -99,9 +99,9 @@ export default function App() {
         <nav className="topbar-nav">
           <button className="topbar-tab topbar-tab--active">Write</button>
           {/* TODO: Library tab — no backend */}
-          <button className="topbar-tab">Library</button>
+          <button className="topbar-tab" disabled style={{ opacity: 0.45, cursor: "default" }}>Library</button>
           {/* TODO: Voice tab — no backend */}
-          <button className="topbar-tab">Voice</button>
+          <button className="topbar-tab" disabled style={{ opacity: 0.45, cursor: "default" }}>Voice</button>
         </nav>
 
         <div className="topbar-controls">
