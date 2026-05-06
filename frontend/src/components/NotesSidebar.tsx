@@ -10,6 +10,24 @@ interface NotesSidebarProps {
   onToggle: () => void;
 }
 
+// Colors cycling a-h for note left-tab strip
+const NOTE_TAB_COLORS = [
+  "#E9A33A", // a
+  "#C8553D", // b
+  "#5C81C5", // c
+  "#8662C2", // d
+  "#4A8B5E", // e
+  "#C25584", // f
+  "#B59247", // g
+  "#4A8584", // h
+];
+
+// Legend chip colors (lighter palette matching rhyme highlight colors)
+const LEGEND_CHIPS = [
+  "#FFE7B0", "#FFD0C2", "#D9E8FF", "#E5DCFF",
+  "#C9EBD2", "#FFD9EC", "#F1E1B8", "#CDE7E6",
+];
+
 export default function NotesSidebar({
   notes,
   activeNoteId,
@@ -21,73 +39,102 @@ export default function NotesSidebar({
 }: NotesSidebarProps) {
   if (!isOpen) {
     return (
-      <aside className="w-8 shrink-0 bg-zinc-800 border-r border-zinc-700 flex flex-col items-center py-3">
+      <div className="sidebar sidebar--collapsed">
         <button
+          className="sidebar-collapse-btn"
+          style={{ margin: "14px auto", display: "block" }}
           onClick={onToggle}
-          className="text-zinc-400 hover:text-zinc-100 transition-colors"
-          title="Open notes"
+          aria-label="Open sidebar"
         >
-          <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-            <line x1="2" y1="4" x2="14" y2="4" />
-            <line x1="2" y1="8" x2="14" y2="8" />
-            <line x1="2" y1="12" x2="14" y2="12" />
-          </svg>
+          ☰
         </button>
-      </aside>
+      </div>
     );
   }
 
   return (
-    <aside className="w-64 shrink-0 bg-zinc-800 border-r border-zinc-700 flex flex-col h-full">
-      <div className="p-3 border-b border-zinc-700 flex items-center gap-2">
-        <button
-          onClick={onNewNote}
-          className="flex-1 text-left px-3 py-2 rounded text-sm bg-zinc-700 hover:bg-zinc-600 text-zinc-100 transition-colors"
-        >
-          + New note
+    <div className="sidebar">
+      {/* ── Header: search + new button + collapse ── */}
+      <div className="sidebar-head">
+        {/* TODO: Note search — no backend search endpoint */}
+        <div className="sidebar-search">
+          <span className="sidebar-search-icon">⌕</span>
+          <input
+            className="sidebar-search-input"
+            placeholder="Search…"
+            readOnly
+          />
+          <span className="sidebar-search-hint">⌘K</span>
+        </div>
+        <button className="sidebar-btn-new" onClick={onNewNote}>
+          + New
         </button>
         <button
+          className="sidebar-collapse-btn"
           onClick={onToggle}
-          className="text-zinc-400 hover:text-zinc-100 transition-colors p-1"
-          title="Collapse sidebar"
+          aria-label="Collapse sidebar"
         >
-          <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-            <polyline points="10,4 6,8 10,12" />
-          </svg>
+          ←
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
-        {notes.length === 0 ? (
-          <p className="text-zinc-500 text-sm text-center mt-8 px-4">No notes yet</p>
-        ) : (
-          notes.map((note) => (
-            <div
-              key={note.id}
-              className={`group flex items-center gap-1 px-3 py-2 cursor-pointer border-b border-zinc-700/50 ${
-                note.id === activeNoteId
-                  ? "bg-zinc-700 text-zinc-100"
-                  : "text-zinc-300 hover:bg-zinc-700/50"
-              }`}
-              onClick={() => onSelectNote(note.id)}
-            >
-              <span className="flex-1 truncate text-sm">
-                {note.title || "Untitled"}
-              </span>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDeleteNote(note.id);
-                }}
-                className="opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-red-400 text-xs px-1 transition-opacity shrink-0"
-                title="Delete note"
-              >
-                ×
-              </button>
-            </div>
-          ))
-        )}
+      {/* ── Section label ── */}
+      <div className="sidebar-section">
+        <span className="sidebar-section-label">All notes</span>
+        <span className="sidebar-section-count">{notes.length}</span>
       </div>
-    </aside>
+
+      {/* ── Note list ── */}
+      <div className="note-list">
+        {notes.length === 0 && (
+          <div style={{ padding: "16px 14px", fontSize: 13, color: "var(--ink-4)" }}>
+            No notes yet
+          </div>
+        )}
+        {notes.map((note, idx) => (
+          <div
+            key={note.id}
+            className={`note-item${activeNoteId === note.id ? " note-item--active" : ""}`}
+            onClick={() => onSelectNote(note.id)}
+          >
+            <div
+              className="note-tab-strip"
+              style={{ background: NOTE_TAB_COLORS[idx % NOTE_TAB_COLORS.length] }}
+            />
+            <div className="note-item-body">
+              <div className="note-title-text">
+                {note.title || "Untitled"}
+              </div>
+              <div className="note-meta-text">
+                {note.content ? note.content.split("\n").length : 0} lines ·{" "}
+                {new Date(note.updated_at).toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                })}
+              </div>
+            </div>
+            <button
+              className="note-delete-btn"
+              onClick={(e) => { e.stopPropagation(); onDeleteNote(note.id); }}
+              aria-label="Delete note"
+            >
+              ×
+            </button>
+          </div>
+        ))}
+      </div>
+
+      {/* ── Legend chips ── */}
+      <div className="sidebar-legend">
+        {LEGEND_CHIPS.map((color, i) => (
+          <div
+            key={i}
+            className="legend-chip"
+            style={{ background: color }}
+            title={String.fromCharCode(97 + i)}
+          />
+        ))}
+      </div>
+    </div>
   );
 }
