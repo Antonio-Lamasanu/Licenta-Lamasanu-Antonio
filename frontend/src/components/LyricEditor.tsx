@@ -223,8 +223,9 @@ export default function LyricEditor({ content, onContentChange, onSelectionChang
         </div>
         <div className="toolbar-spacer" />
         {/* TODO: Suggest line — no backend LLM integration */}
-        <button className="toolbar-action toolbar-action--ghost">⌥+↩ Suggest line</button>
-        <button className="toolbar-action toolbar-action--primary">Export</button>
+        <button className="toolbar-action toolbar-action--ghost" disabled>⌥+↩ Suggest line</button>
+        {/* TODO: Export — no export logic */}
+        <button className="toolbar-action toolbar-action--primary" disabled>Export</button>
       </div>
 
       {/* ── Lyric frame: ruler | body | meter rail ── */}

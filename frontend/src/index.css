@@ -496,6 +496,7 @@ html, body, #root {
   border: 1px solid var(--ink);
 }
 .toolbar-action--primary:hover { opacity: 0.85; }
+.toolbar-action:disabled { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
 
 /* ─── Lyric frame ─── */
 .lyric-frame {
@@ -863,6 +864,7 @@ html, body, #root {
   transition: all 0.15s;
 }
 .rhyme-pin-btn:hover { color: var(--ink-2); border-color: var(--rule-2); }
+.rhyme-pin-btn:disabled { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
 
 .rhyme-meta {
   font-family: var(--mono);

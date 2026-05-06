@@ -219,7 +219,7 @@ export default function RhymeDictionary({
       {/* ── Panel footer ── */}
       <div className="rhyme-panel-foot">
         {/* TODO: Pin to scratchpad — no backend scratchpad */}
-        <button className="rhyme-pin-btn">+ Pin to scratchpad</button>
+        <button className="rhyme-pin-btn" disabled>+ Pin to scratchpad</button>
         <span className="rhyme-meta">CMU dict</span>
       </div>
     </div>
