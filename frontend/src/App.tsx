@@ -7,18 +7,20 @@ import { fetchNotes, createNote, deleteNote } from "./api/notes";
 import type { Note } from "./types/note";
 
 export default function App() {
+  // ── All existing state unchanged ──
   const [notes, setNotes] = useState<Note[]>([]);
   const [activeNoteId, setActiveNoteId] = useState<number | null>(null);
   const [activeTitle, setActiveTitle] = useState("");
   const [activeContent, setActiveContent] = useState("");
-
   const [rhymeQuery, setRhymeQuery] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [autoMode, setAutoMode] = useState(false);
-
   const { saveStatus, setLastSaved } = useAutoSave(activeNoteId, activeTitle, activeContent);
 
-  // Load notes on mount
+  // NEW: theme toggle state
+  const [theme, setTheme] = useState<"light" | "dark">("light");
+
+  // ── All existing effects + handlers unchanged ──
   useEffect(() => {
     fetchNotes()
       .then((loaded) => {
@@ -75,7 +77,6 @@ export default function App() {
     }
   }
 
-  // Keep sidebar titles in sync when a save completes
   function handleTitleChange(title: string) {
     setActiveTitle(title);
     if (activeNoteId !== null) {
@@ -85,22 +86,48 @@ export default function App() {
     }
   }
 
+  const lineCount = activeContent ? activeContent.split("\n").length : 0;
+
   return (
-    <div className="min-h-screen bg-zinc-900 text-zinc-100 flex flex-col">
-      <header className="border-b border-zinc-800 px-6 py-3 flex items-center gap-4 shrink-0">
-        <h1 className="text-lg font-semibold tracking-tight">Rhymathic</h1>
-        {saveStatus === "saving" && (
-          <span className="text-xs text-zinc-500 ml-auto">Saving…</span>
-        )}
-        {saveStatus === "saved" && (
-          <span className="text-xs text-zinc-500 ml-auto">Saved</span>
-        )}
-        {saveStatus === "error" && (
-          <span className="text-xs text-red-400 ml-auto">Save failed</span>
-        )}
+    <div className={`app${theme === "dark" ? " theme-dark" : ""}`}>
+      {/* ── Topbar ── */}
+      <header className="topbar">
+        <div className="topbar-brand">
+          <span className="wordmark">Rhymathic</span>
+        </div>
+
+        <nav className="topbar-nav">
+          <button className="topbar-tab topbar-tab--active">Write</button>
+          {/* TODO: Library tab — no backend */}
+          <button className="topbar-tab">Library</button>
+          {/* TODO: Voice tab — no backend */}
+          <button className="topbar-tab">Voice</button>
+        </nav>
+
+        <div className="topbar-controls">
+          <div className="save-pill">
+            {saveStatus === "saving" && (
+              <><span className="save-dot saving" />Saving…</>
+            )}
+            {saveStatus === "saved" && (
+              <><span className="save-dot saved" />Saved</>
+            )}
+            {saveStatus === "error" && (
+              <><span className="save-dot error" />Save failed</>
+            )}
+          </div>
+          <button
+            className="theme-toggle"
+            onClick={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
+            aria-label="Toggle theme"
+          >
+            {theme === "dark" ? "☀" : "◑"}
+          </button>
+        </div>
       </header>
 
-      <div className="flex flex-1 overflow-hidden">
+      {/* ── Three-column layout ── */}
+      <div className="layout">
         <NotesSidebar
           notes={notes}
           activeNoteId={activeNoteId}
@@ -111,19 +138,22 @@ export default function App() {
           onToggle={() => setSidebarOpen((o) => !o)}
         />
 
-        <main className="flex-1 overflow-y-auto px-8 pt-6">
+        <main className="editor-pane">
           {activeNoteId === null ? (
-            <div className="flex items-center justify-center h-full text-zinc-600 text-sm">
-              Select a note or create a new one
-            </div>
+            <div className="editor-empty">Select a note or create a new one</div>
           ) : (
             <>
-              <input
-                className="w-full bg-transparent outline-none text-xl font-semibold text-zinc-100 placeholder-zinc-600 border-b border-zinc-700 pb-2 mb-6"
-                placeholder="Untitled"
-                value={activeTitle}
-                onChange={(e) => handleTitleChange(e.target.value)}
-              />
+              <div className="editor-header">
+                <input
+                  className="lyric-title"
+                  placeholder="Untitled"
+                  value={activeTitle}
+                  onChange={(e) => handleTitleChange(e.target.value)}
+                />
+                <div className="editor-meta">
+                  draft · {lineCount} {lineCount === 1 ? "line" : "lines"}
+                </div>
+              </div>
               <LyricEditor
                 content={activeContent}
                 onContentChange={setActiveContent}
@@ -141,6 +171,12 @@ export default function App() {
           onAutoModeToggle={() => setAutoMode((o) => !o)}
         />
       </div>
+
+      {/* ── Status bar ── */}
+      <footer className="status-bar">
+        <span>en-US · CMU + pyphen · Auto-save 1s</span>
+        <span>build 2026.05</span>
+      </footer>
     </div>
   );
 }
