@@ -21,7 +21,7 @@ const RHYME_COLORS: { bg: string; ink: string }[] = [
 const EDITOR_STYLE = {
   fontFamily: "var(--serif)",
   fontSize: "21px",
-  lineHeight: "2.4em",
+  lineHeight: "50px", // 2.4 × 21px — absolute so ruler + meter rail rows stay in sync
   whiteSpace: "pre" as const,
   letterSpacing: "-0.005em",
   wordSpacing: "normal",
@@ -168,18 +168,16 @@ export default function LyricEditor({ content, onContentChange, onSelectionChang
         return (
           <span
             key={si}
-            style={{
-              backgroundColor:
-                ci !== undefined
-                  ? RHYME_COLORS[ci % RHYME_COLORS.length].bg
-                  : undefined,
-              color:
-                ci !== undefined
-                  ? RHYME_COLORS[ci % RHYME_COLORS.length].ink
-                  : undefined,
-              borderRadius: "3px",
-              padding: "0 1px",
-            }}
+            style={
+              ci !== undefined
+                ? {
+                    backgroundColor: RHYME_COLORS[ci % RHYME_COLORS.length].bg,
+                    color: RHYME_COLORS[ci % RHYME_COLORS.length].ink,
+                    borderRadius: "3px",
+                    padding: "0 1px",
+                  }
+                : undefined
+            }
           >
             {syl.text}
           </span>
@@ -210,18 +208,18 @@ export default function LyricEditor({ content, onContentChange, onSelectionChang
           <span className="toolbar-label">View</span>
           <button className="toolbar-btn toolbar-btn--active">Lyric</button>
           {/* TODO: Phonemes view — requires backend IPA data */}
-          <button className="toolbar-btn">Phonemes</button>
+          <button className="toolbar-btn" disabled>Phonemes</button>
           {/* TODO: Stress view — requires backend stress data */}
-          <button className="toolbar-btn">Stress</button>
+          <button className="toolbar-btn" disabled>Stress</button>
         </div>
         <div className="toolbar-sep" />
         <div className="toolbar-group">
           <span className="toolbar-label">Highlight</span>
           <button className="toolbar-btn toolbar-btn--active">Rhyme</button>
           {/* TODO: Meter highlight — no backend meter target */}
-          <button className="toolbar-btn">Meter</button>
+          <button className="toolbar-btn" disabled>Meter</button>
           {/* TODO: Mood highlight — no backend */}
-          <button className="toolbar-btn">Mood</button>
+          <button className="toolbar-btn" disabled>Mood</button>
         </div>
         <div className="toolbar-spacer" />
         {/* TODO: Suggest line — no backend LLM integration */}
@@ -248,7 +246,7 @@ export default function LyricEditor({ content, onContentChange, onSelectionChang
             ref={mirrorRef}
             className="lyric-mirror"
             style={EDITOR_STYLE}
-            aria-hidden
+            aria-hidden="true"
           >
             {lines.map((line, lineIdx) => (
               <div key={lineIdx} style={{ height: EDITOR_STYLE.lineHeight }}>
@@ -277,6 +275,7 @@ export default function LyricEditor({ content, onContentChange, onSelectionChang
                 mirrorRef.current.scrollLeft = textareaRef.current.scrollLeft;
               }
             }}
+            wrap="off"
             placeholder="Start writing…"
             spellCheck={false}
           />
