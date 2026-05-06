@@ -3,37 +3,28 @@ import { fetchAnalysis, type SyllableInfo, type SyllableGroup } from "../api/syl
 
 const DEBOUNCE_MS = 400;
 
-const RHYME_COLORS = [
-  "rgba(239,68,68,0.35)",    // red
-  "rgba(59,130,246,0.35)",   // blue
-  "rgba(34,197,94,0.35)",    // green
-  "rgba(234,179,8,0.35)",    // yellow
-  "rgba(168,85,247,0.35)",   // purple
-  "rgba(249,115,22,0.35)",   // orange
-  "rgba(20,184,166,0.35)",   // teal
-  "rgba(236,72,153,0.35)",   // pink
-  "rgba(14,165,233,0.35)",   // sky
-  "rgba(132,204,22,0.35)",   // lime
-  "rgba(245,158,11,0.35)",   // amber
-  "rgba(244,63,94,0.35)",    // rose
-  "rgba(139,92,246,0.35)",   // violet
-  "rgba(16,185,129,0.35)",   // emerald
-  "rgba(217,70,239,0.35)",   // fuchsia
-  "rgba(6,182,212,0.35)",    // cyan
-  "rgba(99,102,241,0.35)",   // indigo
-  "rgba(251,113,133,0.35)",  // coral
-  "rgba(163,230,53,0.35)",   // yellow-green
-  "rgba(251,146,60,0.35)",   // deep orange
+const RHYME_COLORS: { bg: string; ink: string }[] = [
+  { bg: "#FFE7B0", ink: "#6B4A05" }, // a butter
+  { bg: "#FFD0C2", ink: "#7A2A12" }, // b peach
+  { bg: "#D9E8FF", ink: "#1E3A78" }, // c sky
+  { bg: "#E5DCFF", ink: "#3B2877" }, // d lilac
+  { bg: "#C9EBD2", ink: "#1E5E36" }, // e mint
+  { bg: "#FFD9EC", ink: "#7A1F4F" }, // f rose
+  { bg: "#F1E1B8", ink: "#5C4314" }, // g sand
+  { bg: "#CDE7E6", ink: "#1F4E4D" }, // h teal
+  { bg: "#FBE2A8", ink: "#6B4A05" }, // i amber
+  { bg: "#D8E4C2", ink: "#3F4F1F" }, // j olive
+  { bg: "#E8D9CC", ink: "#5A3A22" }, // k clay
 ];
 
 // Shared style values — must be identical on mirror div and textarea
 const EDITOR_STYLE = {
-  fontFamily: "ui-monospace, monospace",
-  fontSize: "0.875rem",
-  lineHeight: "2.5rem",
+  fontFamily: "var(--serif)",
+  fontSize: "21px",
+  lineHeight: "2.4em",
   whiteSpace: "pre" as const,
+  letterSpacing: "-0.005em",
   wordSpacing: "normal",
-  letterSpacing: "normal",
   tabSize: 4,
 };
 
@@ -180,9 +171,14 @@ export default function LyricEditor({ content, onContentChange, onSelectionChang
             style={{
               backgroundColor:
                 ci !== undefined
-                  ? RHYME_COLORS[ci % RHYME_COLORS.length]
+                  ? RHYME_COLORS[ci % RHYME_COLORS.length].bg
                   : undefined,
-              borderRadius: "2px",
+              color:
+                ci !== undefined
+                  ? RHYME_COLORS[ci % RHYME_COLORS.length].ink
+                  : undefined,
+              borderRadius: "3px",
+              padding: "0 1px",
             }}
           >
             {syl.text}
@@ -206,57 +202,112 @@ export default function LyricEditor({ content, onContentChange, onSelectionChang
   }
 
   return (
-    <div className="flex gap-4 w-full">
-      {/* Per-line syllable counts */}
-      <div className="flex flex-col text-right select-none min-w-[3rem]" style={{ paddingTop: "14px" }}>
-        {lines.map((_: string, i: number) => (
-          <div
-            key={i}
-            className="text-zinc-400 font-mono"
-            style={{ ...EDITOR_STYLE, height: "2.5rem" }}
-          >
-            {counts[i] !== undefined && counts[i] > 0 ? counts[i] : ""}
-          </div>
-        ))}
+    <div style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden" }}>
+
+      {/* ── Toolbar ── */}
+      <div className="editor-toolbar">
+        <div className="toolbar-group">
+          <span className="toolbar-label">View</span>
+          <button className="toolbar-btn toolbar-btn--active">Lyric</button>
+          {/* TODO: Phonemes view — requires backend IPA data */}
+          <button className="toolbar-btn">Phonemes</button>
+          {/* TODO: Stress view — requires backend stress data */}
+          <button className="toolbar-btn">Stress</button>
+        </div>
+        <div className="toolbar-sep" />
+        <div className="toolbar-group">
+          <span className="toolbar-label">Highlight</span>
+          <button className="toolbar-btn toolbar-btn--active">Rhyme</button>
+          {/* TODO: Meter highlight — no backend meter target */}
+          <button className="toolbar-btn">Meter</button>
+          {/* TODO: Mood highlight — no backend */}
+          <button className="toolbar-btn">Mood</button>
+        </div>
+        <div className="toolbar-spacer" />
+        {/* TODO: Suggest line — no backend LLM integration */}
+        <button className="toolbar-action toolbar-action--ghost">⌥+↩ Suggest line</button>
+        <button className="toolbar-action toolbar-action--primary">Export</button>
       </div>
 
-      {/* Editor area: mirror div + transparent textarea overlay */}
-      <div className="relative flex-1">
-        {/* Mirror div — shows rhyme highlights and per-word syllable annotations */}
-        <div
-          ref={mirrorRef}
-          aria-hidden="true"
-          className="absolute inset-0 pointer-events-none overflow-hidden text-zinc-200"
-          style={{ ...EDITOR_STYLE, paddingTop: "14px" }}
-        >
-          {lines.map((line, i) => (
-            <div key={i} style={{ height: "2.5rem" }}>
-              {renderLine(line, i)}
+      {/* ── Lyric frame: ruler | body | meter rail ── */}
+      <div className="lyric-frame">
+
+        {/* Ruler: line numbers + syllable counts */}
+        <div className="lyric-ruler">
+          {lines.map((_, i) => (
+            <div key={i} className="ruler-row" style={{ height: EDITOR_STYLE.lineHeight }}>
+              <span className="ruler-line-num">{i + 1}</span>
+              <span className="ruler-syl-count">{counts[i] ?? ""}</span>
             </div>
           ))}
         </div>
 
-        {/* Transparent textarea — captures all user input */}
-        <textarea
-          ref={textareaRef}
-          className="relative w-full bg-transparent resize-none outline-none placeholder-zinc-600"
-          style={{
-            ...EDITOR_STYLE,
-            color: "transparent",
-            caretColor: "white",
-            paddingTop: "14px",
-            overflow: "hidden",
-            minHeight: "70vh",
-          }}
-          placeholder="Start writing your lyrics..."
-          value={content}
-          onChange={(e) => onContentChange(e.target.value)}
-          onMouseUp={handleSelectionChange}
-          onKeyUp={handleSelectionChange}
-          spellCheck={false}
-          wrap="off"
-        />
+        {/* Body: mirror div + textarea */}
+        <div className="lyric-body">
+          <div
+            ref={mirrorRef}
+            className="lyric-mirror"
+            style={EDITOR_STYLE}
+            aria-hidden
+          >
+            {lines.map((line, lineIdx) => (
+              <div key={lineIdx} style={{ height: EDITOR_STYLE.lineHeight }}>
+                {renderLine(line, lineIdx)}
+              </div>
+            ))}
+          </div>
+          <textarea
+            ref={textareaRef}
+            className="lyric-textarea"
+            style={{
+              ...EDITOR_STYLE,
+              color: "transparent",
+              caretColor: "var(--ink)",
+              overflow: "hidden",
+              minHeight: "60vh",
+              height: "auto",
+            }}
+            value={content}
+            onChange={(e) => onContentChange(e.target.value)}
+            onKeyUp={handleSelectionChange}
+            onMouseUp={handleSelectionChange}
+            onScroll={() => {
+              if (mirrorRef.current && textareaRef.current) {
+                mirrorRef.current.scrollTop = textareaRef.current.scrollTop;
+                mirrorRef.current.scrollLeft = textareaRef.current.scrollLeft;
+              }
+            }}
+            placeholder="Start writing…"
+            spellCheck={false}
+          />
+        </div>
+
+        {/* Meter rail (stub) */}
+        {/* TODO: Meter rail — visualizes syllable count vs. target; no backend target logic */}
+        <div className="meter-rail">
+          {lines.map((_, i) => (
+            <div key={i} className="meter-row" style={{ height: EDITOR_STYLE.lineHeight }}>
+              <div className="meter-bar-track" />
+            </div>
+          ))}
+        </div>
+
       </div>
+
+      {/* ── Editor footer ── */}
+      <div className="editor-footer">
+        {/* TODO: Caret phonetic readout — requires IPA lookup from cursor position */}
+        <div className="footer-caret">
+          <span className="caret-label">Cursor</span>
+          <span className="caret-word">—</span>
+        </div>
+        {/* TODO: Scheme pill — requires rhyme scheme analysis (ABAB etc.) */}
+        <div className="scheme-pill">
+          <span className="scheme-dot" />
+          <span className="scheme-text">scheme</span>
+        </div>
+      </div>
+
     </div>
   );
 }
