@@ -162,7 +162,7 @@ export default function RhymeDictionary({
       {/* ── Tabs ── */}
       <div className="rhyme-tabs">
         <button className="rhyme-tab rhyme-tab--active">
-          Perfect {sections.length > 0 ? `(${sections.length})` : ""}
+          Perfect{sections.length > 0 ? ` (${sections.length})` : ""}
         </button>
         {/* TODO: Slant rhymes tab — no backend slant matching */}
         <button className="rhyme-tab" disabled style={{ opacity: 0.45, cursor: "default" }}>Slant</button>
