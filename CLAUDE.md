@@ -2,6 +2,17 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Sensitive File Policy
+
+The following file patterns are off-limits for reading or editing:
+`.env*`, `*.pem`, `*.key`, `secrets/`, `credentials/`, `.aws/`, `.ssh/`,
+`docker-compose*.yml`, `config/database.yml`
+
+When you need to reference or modify one of these files:
+1. Use the corresponding `*.example` file instead (e.g., `.env.example`, `docker-compose.example.yml`).
+2. If no `*.example` file exists, create one by copying the structure of the original — replacing all real values with descriptive placeholders like `your_api_key_here` or `change_me`.
+3. Never ask the user to paste sensitive values into the chat. Instead, document what variables/keys are needed in the example file.
+
 ## Project summary
 Rhymathic is a web app for writing lyrics and poetry with real-time per-line syllable counts and rhyme highlighting.
 

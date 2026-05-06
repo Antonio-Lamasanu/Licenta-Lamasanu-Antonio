@@ -199,27 +199,53 @@ _APOSTROPHE_ABBREVS: dict[str, str] = {
     "'cause": "because",
 }
 
+# Suffixes commonly dropped in informal/lyric writing (ordered: most frequent first)
+_DROPPED_SUFFIXES = ('g', 'ng', 'd', 'nd', 'ld', 't', 'st')
+
+# Prefixes commonly dropped in informal/lyric writing
+_DROPPED_PREFIXES = ('a', 'be', 'un', 'e', 'in')
+
 
 def _cmu_lookup(clean: str) -> list | None:
-    """CMU dict lookup with fallbacks for common contractions.
+    """CMU dict lookup with fallbacks for common contractions and shortenings.
 
-    Tries the word as-is, then common apostrophe-contracted forms:
-    - Words ending in ' (e.g. scorin') → try appending 'g' (scoring), then strip '
+    Tries the word as-is, then:
+    - Words ending in ' → try appending each dropped suffix, then bare stem
     - Known abbreviations ('n' → and, 'em → them, etc.)
+    - Words starting with ' → try bare stem, then prepend dropped prefixes
+    - Try appending each dropped suffix (e.g. 'runnin' → 'running')
+    - Try prepending each dropped prefix (e.g. 'gainst' → 'against')
     """
     entries = _cmudict.get(clean)
     if entries:
         return entries
     if clean.endswith("'"):
-        for candidate in (clean[:-1] + 'g', clean[:-1]):
-            entries = _cmudict.get(candidate)
+        stem = clean[:-1]
+        for suffix in _DROPPED_SUFFIXES:
+            entries = _cmudict.get(stem + suffix)
             if entries:
                 return entries
+        entries = _cmudict.get(stem)
+        if entries:
+            return entries
     fallback = _APOSTROPHE_ABBREVS.get(clean)
     if fallback:
         return _cmudict.get(fallback)
     if clean.startswith("'"):
-        entries = _cmudict.get(clean[1:])
+        stem = clean[1:]
+        entries = _cmudict.get(stem)
+        if entries:
+            return entries
+        for prefix in _DROPPED_PREFIXES:
+            entries = _cmudict.get(prefix + stem)
+            if entries:
+                return entries
+    for suffix in _DROPPED_SUFFIXES:
+        entries = _cmudict.get(clean + suffix)
+        if entries:
+            return entries
+    for prefix in _DROPPED_PREFIXES:
+        entries = _cmudict.get(prefix + clean)
         if entries:
             return entries
     return None
@@ -406,7 +432,7 @@ def _rhymes_for_chunk(group: list[str]) -> tuple[dict[str, list[str]], dict[str,
 
     if len(group) == 1:
         anchor = group[0]
-        prons = _cmudict.get(anchor)
+        prons = _cmu_lookup(anchor)
         tail = _rhyme_tail(prons[0]) if prons else None
         for r in (_rhyme_index.get(tail, []) if tail else []):
             if r != anchor:
@@ -416,7 +442,7 @@ def _rhymes_for_chunk(group: list[str]) -> tuple[dict[str, list[str]], dict[str,
     # Multi-word: build the target vowel sequence from all words in the group
     target_seq: list[str] = []
     for w in group:
-        prons = _cmudict.get(w)
+        prons = _cmu_lookup(w)
         if prons:
             target_seq.extend(_vowel_seq(prons[0]))
     if not target_seq:
@@ -452,7 +478,7 @@ def _chunk_phonemes(group: list[str]) -> list[str]:
     """Return a vowel-phoneme string for each word in the group."""
     result = []
     for w in group:
-        prons = _cmudict.get(w)
+        prons = _cmu_lookup(w)
         if prons:
             vowels = [p.rstrip('012') for p in prons[0] if p.rstrip('012') in VOWEL_PHONEMES]
             result.append(" ".join(vowels))

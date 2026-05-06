@@ -1,20 +1,26 @@
 services:
   backend:
     build: ./backend
-    expose:
-      - "8000"
+    ports:
+      - "8000:8000"
     environment:
       - FRONTEND_ORIGIN=http://localhost:5173
       - DB_PATH=/data/notes.db
     volumes:
       - ./backend/notes.db:/data/notes.db
+      - ./backend:/app
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
   frontend:
-    build:
-      context: ./frontend
-      args:
-        VITE_API_URL: ""
+    image: node:20-alpine
+    working_dir: /app
     ports:
-      - "5173:80"
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:8000
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    command: sh -c "npm install --legacy-peer-deps && npm run dev -- --host"
     depends_on:
       - backend
