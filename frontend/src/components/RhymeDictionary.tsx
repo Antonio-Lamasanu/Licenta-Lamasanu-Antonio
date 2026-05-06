@@ -58,9 +58,11 @@ function RhymesSectionPanel({ section, isOpen, onToggle }: SectionProps) {
         >
           {section.columns.map((col, ci) => (
             <div key={ci}>
-              <div style={{ fontFamily: "var(--mono)", fontSize: 10, color: "var(--ink-4)", marginBottom: 4 }}>
-                {col.anchor}
-              </div>
+              {colCount > 1 && (
+                <div style={{ fontFamily: "var(--mono)", fontSize: 10, color: "var(--ink-4)", marginBottom: 4 }}>
+                  {col.anchor}
+                </div>
+              )}
               {Object.entries(col.rhymes_by_syllables).map(([syl, words]) => (
                 <div key={syl} style={{ marginBottom: 6 }}>
                   <div className="rhyme-section-label" style={{ padding: "0 0 4px", fontSize: 9.5 }}>
@@ -108,12 +110,12 @@ export default function RhymeDictionary({
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
     if (!query.trim()) {
       setSections([]);
       setError(null);
       return;
     }
-    if (debounceTimer.current) clearTimeout(debounceTimer.current);
     debounceTimer.current = setTimeout(async () => {
       setLoading(true);
       setError(null);
@@ -152,9 +154,10 @@ export default function RhymeDictionary({
           <span className="rhyme-search-icon">⌕</span>
           <input
             className="rhyme-search-input"
-            placeholder="Search rhymes…"
+            placeholder={autoMode ? "Auto — move cursor in editor" : "Search rhymes…"}
             value={query}
-            onChange={(e) => onQueryChange(e.target.value)}
+            readOnly={autoMode}
+            onChange={autoMode ? undefined : (e) => onQueryChange(e.target.value)}
           />
         </div>
       </div>
@@ -185,7 +188,15 @@ export default function RhymeDictionary({
             {error}
           </div>
         )}
-        {!loading && !error && sections.length === 0 && query.trim() && (
+        {!loading && !error && query.trim() && sections.length === 0 && (
+          <div className="rhyme-empty">No rhymes found for "{query}"</div>
+        )}
+        {!loading && !error && sections.length > 0 && !sections.some(s =>
+          s.columns.some(c =>
+            Object.keys(c.rhymes_by_syllables).length > 0 ||
+            Object.keys(c.other_rhymes_by_syllables).length > 0
+          )
+        ) && (
           <div className="rhyme-empty">No rhymes found for "{query}"</div>
         )}
         {!loading && sections.map((section, i) => (
