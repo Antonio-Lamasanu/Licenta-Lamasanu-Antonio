@@ -1,8 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { fetchRhymes, type RhymeSection } from "../api/rhymes";
 
-const DEBOUNCE_MS = 400;
-
 interface RhymeDictionaryProps {
   query: string;
   onQueryChange: (q: string) => void;
@@ -13,13 +11,18 @@ interface RhymeDictionaryProps {
 function ChevronIcon({ open }: { open: boolean }) {
   return (
     <svg
-      className={`w-3 h-3 shrink-0 transition-transform duration-150 ${open ? "rotate-180" : ""}`}
+      width="12"
+      height="12"
       viewBox="0 0 12 12"
       fill="none"
       stroke="currentColor"
-      strokeWidth="2"
+      strokeWidth="1.5"
       strokeLinecap="round"
-      strokeLinejoin="round"
+      style={{
+        transform: open ? "rotate(180deg)" : "rotate(0deg)",
+        transition: "transform 0.15s",
+        color: "var(--ink-4)",
+      }}
     >
       <polyline points="2,4 6,8 10,4" />
     </svg>
@@ -33,113 +36,59 @@ interface SectionProps {
 }
 
 function RhymesSectionPanel({ section, isOpen, onToggle }: SectionProps) {
-  const multiCol = section.columns.length > 1;
-  const chipClass = multiCol
-    ? "text-[10px] bg-zinc-800 text-zinc-200 rounded px-1.5 py-0.5"
-    : "text-xs bg-zinc-800 text-zinc-200 rounded px-2 py-0.5";
-
-  const gridClass =
-    section.columns.length === 1
-      ? "grid-cols-1"
-      : section.columns.length === 2
-      ? "grid-cols-2"
-      : "grid-cols-3";
+  const colCount = section.columns.length;
 
   return (
-    <div className="border border-zinc-800 rounded overflow-hidden">
-      {/* Header */}
-      <button
-        onClick={onToggle}
-        className="w-full flex items-center gap-1 px-2 py-1.5 bg-zinc-850 hover:bg-zinc-800 transition-colors text-left"
-      >
-        <div className="flex-1 flex flex-wrap items-center gap-1 min-w-0">
-          {section.columns.map((col, ci) => {
-            const chunkWords = col.chunk.split(" ");
-            return (
-              <span key={ci} className="flex items-center gap-1">
-                {ci > 0 && <span className="text-zinc-600 text-xs">|</span>}
-                <span className="flex items-center gap-1">
-                  {chunkWords.map((word, wi) => (
-                    <span key={wi} className="flex flex-col items-center">
-                      <span className="text-xs text-zinc-300 font-medium leading-tight">
-                        {word}
-                      </span>
-                      {col.chunk_phonemes[wi] && (
-                        <span className="text-[8px] text-zinc-500 font-mono leading-tight">
-                          {col.chunk_phonemes[wi]}
-                        </span>
-                      )}
-                    </span>
-                  ))}
-                </span>
-              </span>
-            );
-          })}
-        </div>
-        <span className="text-zinc-500 ml-1">
-          <ChevronIcon open={isOpen} />
+    <div className="rhyme-section-panel">
+      <button className="rhyme-section-header" onClick={onToggle}>
+        <span className="rhyme-section-title">
+          {section.columns.map((c) => c.chunk).join(" · ")}
         </span>
+        <ChevronIcon open={isOpen} />
       </button>
 
-      {/* Content — fixed height + scrollable */}
       {isOpen && (
-        <div className="max-h-48 overflow-y-auto">
-          <div className={`grid ${gridClass} divide-x divide-zinc-800`}>
-            {section.columns.map((col, ci) => {
-              const syllableKeys = Object.keys(col.rhymes_by_syllables).sort(
-                (a, b) => Number(a) - Number(b)
-              );
-              const hasRhymes = syllableKeys.length > 0;
-
-              return (
-                <div key={ci} className="p-2 min-w-0">
-                  {multiCol && (
-                    <p className="text-[10px] text-zinc-500 mb-1 truncate font-medium">
-                      ∼ {col.anchor}
-                    </p>
-                  )}
-                  {!hasRhymes && (
-                    <p className="text-[10px] text-zinc-600 italic">none</p>
-                  )}
-                  {syllableKeys.map((count) => (
-                    <div key={count} className="mb-2">
-                      <p className="text-[9px] text-zinc-600 mb-1 uppercase tracking-wide">
-                        {count}syl
-                      </p>
-                      <div className="flex flex-wrap gap-0.5">
-                        {col.rhymes_by_syllables[count].map((rhyme) => (
-                          <span key={rhyme} className={chipClass}>
-                            {rhyme}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                  {Object.keys(col.other_rhymes_by_syllables).length > 0 && (
-                    <div className="mt-2 pt-2 border-t border-zinc-800">
-                      <p className="text-[9px] text-zinc-600 mb-1.5 uppercase tracking-wide">Other</p>
-                      {Object.keys(col.other_rhymes_by_syllables)
-                        .sort((a, b) => Number(a) - Number(b))
-                        .map((count) => (
-                          <div key={count} className="mb-2">
-                            <p className="text-[9px] text-zinc-700 mb-1 uppercase tracking-wide">
-                              {count}syl
-                            </p>
-                            <div className="flex flex-wrap gap-0.5">
-                              {col.other_rhymes_by_syllables[count].map((rhyme) => (
-                                <span key={rhyme} className={chipClass + " opacity-60"}>
-                                  {rhyme}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        ))}
-                    </div>
-                  )}
+        <div
+          className="rhyme-section-body"
+          style={{
+            display: "grid",
+            gridTemplateColumns: `repeat(${colCount}, 1fr)`,
+            gap: "0 12px",
+          }}
+        >
+          {section.columns.map((col, ci) => (
+            <div key={ci}>
+              <div style={{ fontFamily: "var(--mono)", fontSize: 10, color: "var(--ink-4)", marginBottom: 4 }}>
+                {col.anchor}
+              </div>
+              {Object.entries(col.rhymes_by_syllables).map(([syl, words]) => (
+                <div key={syl} style={{ marginBottom: 6 }}>
+                  <div className="rhyme-section-label" style={{ padding: "0 0 4px", fontSize: 9.5 }}>
+                    {syl} syl
+                  </div>
+                  <div className="rhyme-chip-grid">
+                    {words.map((w) => (
+                      <span key={w} className="rhyme-chip">{w}</span>
+                    ))}
+                  </div>
                 </div>
-              );
-            })}
-          </div>
+              ))}
+              {Object.entries(col.other_rhymes_by_syllables).map(([syl, words]) =>
+                words.length > 0 ? (
+                  <div key={`other-${syl}`} style={{ marginBottom: 6 }}>
+                    <div className="rhyme-section-label" style={{ padding: "0 0 4px", fontSize: 9.5, opacity: 0.6 }}>
+                      {syl} syl (other)
+                    </div>
+                    <div className="rhyme-chip-grid">
+                      {words.map((w) => (
+                        <span key={w} className="rhyme-chip rhyme-chip--other">{w}</span>
+                      ))}
+                    </div>
+                  </div>
+                ) : null
+              )}
+            </div>
+          ))}
         </div>
       )}
     </div>
@@ -155,114 +104,113 @@ export default function RhymeDictionary({
   const [sections, setSections] = useState<RhymeSection[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [expanded, setExpanded] = useState<Set<number>>(() => new Set([0]));
+  const [expanded, setExpanded] = useState<Set<number>>(new Set([0]));
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    if (debounceTimer.current !== null) clearTimeout(debounceTimer.current);
-
     if (!query.trim()) {
       setSections([]);
-      setLoading(false);
+      setError(null);
       return;
     }
-
-    debounceTimer.current = setTimeout(() => {
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    debounceTimer.current = setTimeout(async () => {
       setLoading(true);
       setError(null);
-      fetchRhymes(query)
-        .then((data) => {
-          setSections(data.sections);
-          setExpanded(new Set([0]));
-          setLoading(false);
-        })
-        .catch((err: unknown) => {
-          setError(err instanceof Error ? err.message : "Unknown error");
-          setLoading(false);
-        });
-    }, DEBOUNCE_MS);
-
-    return () => {
-      if (debounceTimer.current !== null) clearTimeout(debounceTimer.current);
-    };
+      try {
+        const result = await fetchRhymes(query);
+        setSections(result.sections);
+        setExpanded(new Set([0]));
+      } catch {
+        setError("Failed to fetch rhymes");
+      } finally {
+        setLoading(false);
+      }
+    }, 400);
+    return () => { if (debounceTimer.current) clearTimeout(debounceTimer.current); };
   }, [query]);
 
-  function toggle(i: number) {
-    setExpanded((prev) => {
-      const next = new Set(prev);
-      next.has(i) ? next.delete(i) : next.add(i);
-      return next;
-    });
-  }
-
-  const hasAnyRhymes = sections.some((s) =>
-    s.columns.some(
-      (c) =>
-        Object.keys(c.rhymes_by_syllables).length > 0 ||
-        Object.keys(c.other_rhymes_by_syllables).length > 0
-    )
-  );
-
   return (
-    <aside className="w-96 shrink-0 border-l border-zinc-800 flex flex-col h-full overflow-hidden">
-      {/* Header */}
-      <div className="px-3 pt-3 pb-2 border-b border-zinc-800 shrink-0">
-        <div className="flex items-center justify-between mb-2">
-          <p className="text-xs text-zinc-500">Rhyme Dictionary</p>
+    <div className="rhyme-panel">
+
+      {/* ── Panel header ── */}
+      <div className="rhyme-panel-head">
+        <div className="rhyme-eyebrow">Rhyme</div>
+
+        <div className="rhyme-follow-row">
+          <span className="rhyme-follow-label">Follow cursor</span>
           <button
+            className={`rhyme-toggle${autoMode ? " rhyme-toggle--on" : ""}`}
             onClick={onAutoModeToggle}
-            className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${
-              autoMode
-                ? "bg-zinc-600 text-zinc-100"
-                : "bg-zinc-800 text-zinc-400 hover:text-zinc-300"
-            }`}
+            aria-label="Toggle follow cursor"
           >
-            Auto
+            <span className="rhyme-toggle-knob" />
           </button>
         </div>
-        <input
-          type="text"
-          className={`w-full bg-zinc-800 rounded px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 outline-none focus:ring-1 focus:ring-zinc-600 transition-opacity ${
-            autoMode ? "opacity-60 cursor-default" : ""
-          }`}
-          placeholder={autoMode ? "Auto — move cursor in editor" : "Search rhymes…"}
-          value={query}
-          readOnly={autoMode}
-          onChange={autoMode ? undefined : (e) => onQueryChange(e.target.value)}
-        />
+
+        <div className="rhyme-search">
+          <span className="rhyme-search-icon">⌕</span>
+          <input
+            className="rhyme-search-input"
+            placeholder="Search rhymes…"
+            value={query}
+            onChange={(e) => onQueryChange(e.target.value)}
+          />
+        </div>
       </div>
 
-      {/* Body */}
-      <div className="flex-1 overflow-y-auto px-3 py-3 flex flex-col gap-2">
+      {/* ── Tabs ── */}
+      <div className="rhyme-tabs">
+        <button className="rhyme-tab rhyme-tab--active">
+          Perfect {sections.length > 0 ? `(${sections.length})` : ""}
+        </button>
+        {/* TODO: Slant rhymes tab — no backend slant matching */}
+        <button className="rhyme-tab" disabled style={{ opacity: 0.45, cursor: "default" }}>Slant</button>
+        {/* TODO: Multi-syllable rhymes tab — no backend multi matching */}
+        <button className="rhyme-tab" disabled style={{ opacity: 0.45, cursor: "default" }}>Multi</button>
+      </div>
+
+      {/* ── Results ── */}
+      <div className="rhyme-results">
         {!query.trim() && (
-          <p className="text-zinc-500 text-xs text-center mt-4">
-            {autoMode ? "Move the cursor in the editor" : "Select text in the editor to search"}
-          </p>
+          <div className="rhyme-empty">
+            Type or select a word to find rhymes
+          </div>
         )}
-
         {loading && (
-          <p className="text-zinc-400 text-xs text-center mt-4">Loading…</p>
+          <div className="rhyme-empty">Finding rhymes…</div>
         )}
-
         {error && (
-          <p className="text-red-400 text-xs text-center mt-4">{error}</p>
+          <div className="rhyme-empty" style={{ color: "var(--accent)" }}>
+            {error}
+          </div>
         )}
-
-        {!loading && !error && query.trim() && sections.length > 0 && !hasAnyRhymes && (
-          <p className="text-zinc-500 text-xs text-center mt-4">No rhymes found</p>
+        {!loading && !error && sections.length === 0 && query.trim() && (
+          <div className="rhyme-empty">No rhymes found for "{query}"</div>
         )}
-
-        {!loading &&
-          !error &&
-          sections.map((section, i) => (
-            <RhymesSectionPanel
-              key={i}
-              section={section}
-              isOpen={expanded.has(i)}
-              onToggle={() => toggle(i)}
-            />
-          ))}
+        {!loading && sections.map((section, i) => (
+          <RhymesSectionPanel
+            key={i}
+            section={section}
+            isOpen={expanded.has(i)}
+            onToggle={() =>
+              setExpanded((prev) => {
+                const next = new Set(prev);
+                if (next.has(i)) next.delete(i);
+                else next.add(i);
+                return next;
+              })
+            }
+          />
+        ))}
       </div>
-    </aside>
+
+      {/* ── Panel footer ── */}
+      <div className="rhyme-panel-foot">
+        {/* TODO: Pin to scratchpad — no backend scratchpad */}
+        <button className="rhyme-pin-btn">+ Pin to scratchpad</button>
+        <span className="rhyme-meta">CMU dict</span>
+      </div>
+    </div>
   );
 }
