@@ -127,7 +127,7 @@ export default function App() {
       </header>
 
       {/* ── Three-column layout ── */}
-      <div className="layout">
+      <div className="layout" style={{ gridTemplateColumns: sidebarOpen ? "280px 1fr 360px" : "48px 1fr 360px" }}>
         <NotesSidebar
           notes={notes}
           activeNoteId={activeNoteId}
