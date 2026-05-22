@@ -32,3 +32,11 @@ export async function deleteNote(id: number): Promise<void> {
   const res = await fetch(`${API_URL}/api/notes/${id}`, { method: "DELETE" });
   if (!res.ok) throw new Error(`Notes API error: ${res.status}`);
 }
+
+export async function searchNotes(q: string): Promise<Note[]> {
+  const response = await fetch(
+    `${API_URL}/api/notes?q=${encodeURIComponent(q)}`
+  );
+  if (!response.ok) throw new Error(`Search error: ${response.status}`);
+  return response.json() as Promise<Note[]>;
+}

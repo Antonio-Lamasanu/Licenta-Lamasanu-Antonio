@@ -8,6 +8,10 @@ interface NotesSidebarProps {
   onDeleteNote: (id: number) => void;
   isOpen: boolean;
   onToggle: () => void;
+  searchQuery: string;
+  onSearchChange: (q: string) => void;
+  activeColorGroups: Set<number> | null;
+  onColorGroupToggle: (index: number) => void;
 }
 
 // Colors cycling a-h for note left-tab strip
@@ -36,6 +40,10 @@ export default function NotesSidebar({
   onDeleteNote,
   isOpen,
   onToggle,
+  searchQuery,
+  onSearchChange,
+  activeColorGroups,
+  onColorGroupToggle,
 }: NotesSidebarProps) {
   if (!isOpen) {
     return (
@@ -54,27 +62,37 @@ export default function NotesSidebar({
 
   return (
     <div className="sidebar">
-      {/* ── Header: search + new button + collapse ── */}
+      {/* ── Header: search + collapse row, then new-note button ── */}
       <div className="sidebar-head">
-        {/* TODO: Note search — no backend search endpoint */}
-        <div className="sidebar-search">
-          <span className="sidebar-search-icon">⌕</span>
-          <input
-            className="sidebar-search-input"
-            placeholder="Search…"
-            readOnly
-          />
-          <span className="sidebar-search-hint">⌘K</span>
+        <div className="sidebar-head-row">
+          <div className="sidebar-search">
+            <span className="sidebar-search-icon">⌕</span>
+            <input
+              className="sidebar-search-input"
+              placeholder="Search notes…"
+              value={searchQuery}
+              onChange={(e) => onSearchChange(e.target.value)}
+            />
+            {searchQuery && (
+              <button
+                className="sidebar-search-clear"
+                onClick={() => onSearchChange("")}
+                aria-label="Clear search"
+              >
+                ×
+              </button>
+            )}
+          </div>
+          <button
+            className="sidebar-collapse-btn"
+            onClick={onToggle}
+            aria-label="Collapse sidebar"
+          >
+            ←
+          </button>
         </div>
         <button className="sidebar-btn-new" onClick={onNewNote}>
-          + New
-        </button>
-        <button
-          className="sidebar-collapse-btn"
-          onClick={onToggle}
-          aria-label="Collapse sidebar"
-        >
-          ←
+          + New note
         </button>
       </div>
 
@@ -106,7 +124,7 @@ export default function NotesSidebar({
                 {note.title || "Untitled"}
               </div>
               <div className="note-meta-text">
-                {note.content ? note.content.split("\n").length : 0} lines ·{" "}
+                {note.content ? note.content.split("\n").filter((l) => l.trim().length > 0).length : 0} lines ·{" "}
                 {new Date(note.updated_at).toLocaleDateString("en-US", {
                   month: "short",
                   day: "numeric",
@@ -126,14 +144,18 @@ export default function NotesSidebar({
 
       {/* ── Legend chips ── */}
       <div className="sidebar-legend">
-        {LEGEND_CHIPS.map((color, i) => (
-          <div
-            key={i}
-            className="legend-chip"
-            style={{ background: color }}
-            title={String.fromCharCode(97 + i)}
-          />
-        ))}
+        {LEGEND_CHIPS.map((color, i) => {
+          const isActive = activeColorGroups === null || activeColorGroups.has(i);
+          return (
+            <div
+              key={i}
+              className={`legend-chip${isActive ? "" : " legend-chip--dim"}`}
+              style={{ background: color, cursor: "pointer" }}
+              title={`Filter rhyme group ${String.fromCharCode(97 + i)}`}
+              onClick={() => onColorGroupToggle(i)}
+            />
+          );
+        })}
       </div>
     </div>
   );

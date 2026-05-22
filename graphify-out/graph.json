@@ -1,0 +1,3738 @@
+{
+  "directed": false,
+  "multigraph": false,
+  "graph": {
+    "hyperedges": [
+      {
+        "id": "syllabification_pipeline",
+        "label": "Syllabification Pipeline (CMUdict + Pyphen + English-words)",
+        "nodes": [
+          "requirements_cmudict",
+          "requirements_pyphen",
+          "requirements_english_words",
+          "readme_feature_syllable_count",
+          "readme_feature_cmu"
+        ],
+        "relation": "implement",
+        "confidence": "INFERRED",
+        "confidence_score": 0.95,
+        "source_file": "backend/requirements.txt"
+      },
+      {
+        "id": "backend_core_deps",
+        "label": "Backend Core Dependencies",
+        "nodes": [
+          "requirements_fastapi",
+          "requirements_uvicorn",
+          "requirements_pydantic",
+          "requirements_dotenv"
+        ],
+        "relation": "implement",
+        "confidence": "EXTRACTED",
+        "confidence_score": 1.0,
+        "source_file": "backend/requirements.txt"
+      }
+    ]
+  },
+  "nodes": [
+    {
+      "label": "settings.json",
+      "file_type": "code",
+      "source_file": ".claude/settings.json",
+      "source_location": "L1",
+      "community": 8,
+      "norm_label": "settings.json",
+      "id": "claude_settings_json"
+    },
+    {
+      "label": "hooks",
+      "file_type": "code",
+      "source_file": ".claude/settings.json",
+      "source_location": "L2",
+      "community": 8,
+      "norm_label": "hooks",
+      "id": "claude_settings_hooks"
+    },
+    {
+      "label": "PreToolUse",
+      "file_type": "code",
+      "source_file": ".claude/settings.json",
+      "source_location": "L3",
+      "community": 8,
+      "norm_label": "pretooluse",
+      "id": "claude_settings_hooks_pretooluse"
+    },
+    {
+      "label": "main.py",
+      "file_type": "code",
+      "source_file": "backend/main.py",
+      "source_location": "L1",
+      "community": 0,
+      "norm_label": "main.py",
+      "id": "backend_main_py"
+    },
+    {
+      "label": "_rhyme_tail()",
+      "file_type": "code",
+      "source_file": "backend/main.py",
+      "source_location": "L25",
+      "community": 7,
+      "norm_label": "_rhyme_tail()",
+      "id": "backend_main_rhyme_tail"
+    },
+    {
+      "label": "_vowel_seq()",
+      "file_type": "code",
+      "source_file": "backend/main.py",
+      "source_location": "L51",
+      "community": 7,
+      "norm_label": "_vowel_seq()",
+      "id": "backend_main_vowel_seq"
+    },
+    {
+      "label": "get_db()",
+      "file_type": "code",
+      "source_file": "backend/main.py",
+      "source_location": "L67",
+      "community": 0,
+      "norm_label": "get_db()",
+      "id": "backend_main_get_db"
+    },
+    {
+      "label": "init_db()",
+      "file_type": "code",
+      "source_file": "backend/main.py",
+      "source_location": "L76",
+      "community": 0,
+      "norm_label": "init_db()",
+      "id": "backend_main_init_db"
+    },
+    {
+      "label": "lifespan()",
+      "file_type": "code",
+      "source_file": "backend/main.py",
+      "source_location": "L92",
+      "community": 0,
+      "norm_label": "lifespan()",
+      "id": "backend_main_lifespan"
+    },
+    {
+      "label": "SyllableRequest",
+      "file_type": "code",
+      "source_file": "backend/main.py",
+      "source_location": "L109",
+      "community": 0,
+      "norm_label": "syllablerequest",
+      "id": "backend_main_syllablerequest"
+    },
+    {
+      "label": "BaseModel",
+      "file_type": "code",
+      "source_file": "",
+      "source_location": "",
+      "community": 0,
+      "norm_label": "basemodel",
+      "id": "basemodel"
+    },
+    {
+      "label": "SyllableResponse",
+      "file_type": "code",
+      "source_file": "backend/main.py",
+      "source_location": "L113",
+      "community": 0,
+      "norm_label": "syllableresponse",
+      "id": "backend_main_syllableresponse"
+    },
+    {
+      "label": "AnalyzeRequest",
+      "file_type": "code",
+      "source_file": "backend/main.py",
+      "source_location": "L117",
+      "community": 0,
+      "norm_label": "analyzerequest",
+      "id": "backend_main_analyzerequest"
+    },
+    {
+      "label": "SyllableInfo",
+      "file_type": "code",
+      "source_file": "backend/main.py",
+      "source_location": "L121",
+      "community": 0,
+      "norm_label": "syllableinfo",
+      "id": "backend_main_syllableinfo"
+    },
+    {
+      "label": "SyllableOccurrence",
+      "file_type": "code",
+      "source_file": "backend/main.py",
+      "source_location": "L126",
+      "community": 0,
+      "norm_label": "syllableoccurrence",
+      "id": "backend_main_syllableoccurrence"
+    },
+    {
+      "label": "SyllableGroup",
+      "file_type": "code",
+      "source_file": "backend/main.py",
+      "source_location": "L132",
+      "community": 0,
+      "norm_label": "syllablegroup",
+      "id": "backend_main_syllablegroup"
+    },
+    {
+      "label": "AnalyzeResponse",
+      "file_type": "code",
+      "source_file": "backend/main.py",
+      "source_location": "L138",
+      "community": 0,
+      "norm_label": "analyzeresponse",
+      "id": "backend_main_analyzeresponse"
+    },
+    {
+      "label": "RhymeRequest",
+      "file_type": "code",
+      "source_file": "backend/main.py",
+      "source_location": "L146",
+      "community": 0,
+      "norm_label": "rhymerequest",
+      "id": "backend_main_rhymerequest"
+    },
+    {
+      "label": "RhymeColumn",
+      "file_type": "code",
+      "source_file": "backend/main.py",
+      "source_location": "L150",
+      "community": 0,
+      "norm_label": "rhymecolumn",
+      "id": "backend_main_rhymecolumn"
+    },
+    {
+      "label": "RhymeSection",
+      "file_type": "code",
+      "source_file": "backend/main.py",
+      "source_location": "L158",
+      "community": 0,
+      "norm_label": "rhymesection",
+      "id": "backend_main_rhymesection"
+    },
+    {
+      "label": "RhymeResponse",
+      "file_type": "code",
+      "source_file": "backend/main.py",
+      "source_location": "L162",
+      "community": 0,
+      "norm_label": "rhymeresponse",
+      "id": "backend_main_rhymeresponse"
+    },
+    {
+      "label": "NoteCreate",
+      "file_type": "code",
+      "source_file": "backend/main.py",
+      "source_location": "L169",
+      "community": 0,
+      "norm_label": "notecreate",
+      "id": "backend_main_notecreate"
+    },
+    {
+      "label": "NoteUpdate",
+      "file_type": "code",
+      "source_file": "backend/main.py",
+      "source_location": "L174",
+      "community": 0,
+      "norm_label": "noteupdate",
+      "id": "backend_main_noteupdate"
+    },
+    {
+      "label": "NoteOut",
+      "file_type": "code",
+      "source_file": "backend/main.py",
+      "source_location": "L179",
+      "community": 0,
+      "norm_label": "noteout",
+      "id": "backend_main_noteout"
+    },
+    {
+      "label": "_strip_punct()",
+      "file_type": "code",
+      "source_file": "backend/main.py",
+      "source_location": "L189",
+      "community": 0,
+      "norm_label": "_strip_punct()",
+      "id": "backend_main_strip_punct"
+    },
+    {
+      "label": "_cmu_lookup()",
+      "file_type": "code",
+      "source_file": "backend/main.py",
+      "source_location": "L209",
+      "community": 7,
+      "norm_label": "_cmu_lookup()",
+      "id": "backend_main_cmu_lookup"
+    },
+    {
+      "label": "syllabify_word()",
+      "file_type": "code",
+      "source_file": "backend/main.py",
+      "source_location": "L254",
+      "community": 0,
+      "norm_label": "syllabify_word()",
+      "id": "backend_main_syllabify_word"
+    },
+    {
+      "label": "count_syllables()",
+      "file_type": "code",
+      "source_file": "backend/main.py",
+      "source_location": "L298",
+      "community": 0,
+      "norm_label": "count_syllables()",
+      "id": "backend_main_count_syllables"
+    },
+    {
+      "label": "count_line_syllables()",
+      "file_type": "code",
+      "source_file": "backend/main.py",
+      "source_location": "L315",
+      "community": 0,
+      "norm_label": "count_line_syllables()",
+      "id": "backend_main_count_line_syllables"
+    },
+    {
+      "label": "syllables()",
+      "file_type": "code",
+      "source_file": "backend/main.py",
+      "source_location": "L325",
+      "community": 0,
+      "norm_label": "syllables()",
+      "id": "backend_main_syllables"
+    },
+    {
+      "label": "analyze()",
+      "file_type": "code",
+      "source_file": "backend/main.py",
+      "source_location": "L331",
+      "community": 0,
+      "norm_label": "analyze()",
+      "id": "backend_main_analyze"
+    },
+    {
+      "label": "_partitions()",
+      "file_type": "code",
+      "source_file": "backend/main.py",
+      "source_location": "L376",
+      "community": 0,
+      "norm_label": "_partitions()",
+      "id": "backend_main_partitions"
+    },
+    {
+      "label": "_syllable_count()",
+      "file_type": "code",
+      "source_file": "backend/main.py",
+      "source_location": "L392",
+      "community": 0,
+      "norm_label": "_syllable_count()",
+      "id": "backend_main_syllable_count"
+    },
+    {
+      "label": "_is_english()",
+      "file_type": "code",
+      "source_file": "backend/main.py",
+      "source_location": "L399",
+      "community": 0,
+      "norm_label": "_is_english()",
+      "id": "backend_main_is_english"
+    },
+    {
+      "label": "_rhymes_for_chunk()",
+      "file_type": "code",
+      "source_file": "backend/main.py",
+      "source_location": "L404",
+      "community": 7,
+      "norm_label": "_rhymes_for_chunk()",
+      "id": "backend_main_rhymes_for_chunk"
+    },
+    {
+      "label": "_chunk_phonemes()",
+      "file_type": "code",
+      "source_file": "backend/main.py",
+      "source_location": "L477",
+      "community": 7,
+      "norm_label": "_chunk_phonemes()",
+      "id": "backend_main_chunk_phonemes"
+    },
+    {
+      "label": "get_rhymes()",
+      "file_type": "code",
+      "source_file": "backend/main.py",
+      "source_location": "L493",
+      "community": 0,
+      "norm_label": "get_rhymes()",
+      "id": "backend_main_get_rhymes"
+    },
+    {
+      "label": "list_notes()",
+      "file_type": "code",
+      "source_file": "backend/main.py",
+      "source_location": "L519",
+      "community": 0,
+      "norm_label": "list_notes()",
+      "id": "backend_main_list_notes"
+    },
+    {
+      "label": "create_note()",
+      "file_type": "code",
+      "source_file": "backend/main.py",
+      "source_location": "L528",
+      "community": 0,
+      "norm_label": "create_note()",
+      "id": "backend_main_create_note"
+    },
+    {
+      "label": "update_note()",
+      "file_type": "code",
+      "source_file": "backend/main.py",
+      "source_location": "L544",
+      "community": 0,
+      "norm_label": "update_note()",
+      "id": "backend_main_update_note"
+    },
+    {
+      "label": "delete_note()",
+      "file_type": "code",
+      "source_file": "backend/main.py",
+      "source_location": "L562",
+      "community": 0,
+      "norm_label": "delete_note()",
+      "id": "backend_main_delete_note"
+    },
+    {
+      "label": "Return the rhyme-determining suffix starting from the last stressed vowel.",
+      "file_type": "rationale",
+      "source_file": "backend/main.py",
+      "source_location": "L26",
+      "community": 7,
+      "norm_label": "return the rhyme-determining suffix starting from the last stressed vowel.",
+      "id": "backend_main_rationale_26"
+    },
+    {
+      "label": "Vowels-only sequence from a phoneme list, stress digits stripped.",
+      "file_type": "rationale",
+      "source_file": "backend/main.py",
+      "source_location": "L52",
+      "community": 7,
+      "norm_label": "vowels-only sequence from a phoneme list, stress digits stripped.",
+      "id": "backend_main_rationale_52"
+    },
+    {
+      "label": "Split a token into (prefix_punct, word_core, suffix_punct).",
+      "file_type": "rationale",
+      "source_file": "backend/main.py",
+      "source_location": "L190",
+      "community": 0,
+      "norm_label": "split a token into (prefix_punct, word_core, suffix_punct).",
+      "id": "backend_main_rationale_190"
+    },
+    {
+      "label": "CMU dict lookup with fallbacks for common contractions and shortenings.      Tri",
+      "file_type": "rationale",
+      "source_file": "backend/main.py",
+      "source_location": "L210",
+      "community": 7,
+      "norm_label": "cmu dict lookup with fallbacks for common contractions and shortenings.      tri",
+      "id": "backend_main_rationale_210"
+    },
+    {
+      "label": "Return per-syllable info for a word token.      Uses pyphen for orthographic spl",
+      "file_type": "rationale",
+      "source_file": "backend/main.py",
+      "source_location": "L255",
+      "community": 0,
+      "norm_label": "return per-syllable info for a word token.      uses pyphen for orthographic spl",
+      "id": "backend_main_rationale_255"
+    },
+    {
+      "label": "All contiguous partitions of words, ordered by number of groups (1 \u2192 N).",
+      "file_type": "rationale",
+      "source_file": "backend/main.py",
+      "source_location": "L377",
+      "community": 0,
+      "norm_label": "all contiguous partitions of words, ordered by number of groups (1 \u2192 n).",
+      "id": "backend_main_rationale_377"
+    },
+    {
+      "label": "Return True if every word in the phrase is a common English word.",
+      "file_type": "rationale",
+      "source_file": "backend/main.py",
+      "source_location": "L400",
+      "community": 0,
+      "norm_label": "return true if every word in the phrase is a common english word.",
+      "id": "backend_main_rationale_400"
+    },
+    {
+      "label": "Return (rhymes_by_syllables, other_rhymes_by_syllables) for a chunk.      rhymes",
+      "file_type": "rationale",
+      "source_file": "backend/main.py",
+      "source_location": "L405",
+      "community": 7,
+      "norm_label": "return (rhymes_by_syllables, other_rhymes_by_syllables) for a chunk.      rhymes",
+      "id": "backend_main_rationale_405"
+    },
+    {
+      "label": "Return a vowel-phoneme string for each word in the group.",
+      "file_type": "rationale",
+      "source_file": "backend/main.py",
+      "source_location": "L478",
+      "community": 7,
+      "norm_label": "return a vowel-phoneme string for each word in the group.",
+      "id": "backend_main_rationale_478"
+    },
+    {
+      "label": "package.json",
+      "file_type": "code",
+      "source_file": "frontend/package.json",
+      "source_location": "L1",
+      "community": 1,
+      "norm_label": "package.json",
+      "id": "frontend_package_json"
+    },
+    {
+      "label": "name",
+      "file_type": "code",
+      "source_file": "frontend/package.json",
+      "source_location": "L2",
+      "community": 1,
+      "norm_label": "name",
+      "id": "frontend_package_name"
+    },
+    {
+      "label": "version",
+      "file_type": "code",
+      "source_file": "frontend/package.json",
+      "source_location": "L3",
+      "community": 1,
+      "norm_label": "version",
+      "id": "frontend_package_version"
+    },
+    {
+      "label": "private",
+      "file_type": "code",
+      "source_file": "frontend/package.json",
+      "source_location": "L4",
+      "community": 1,
+      "norm_label": "private",
+      "id": "frontend_package_private"
+    },
+    {
+      "label": "type",
+      "file_type": "code",
+      "source_file": "frontend/package.json",
+      "source_location": "L5",
+      "community": 1,
+      "norm_label": "type",
+      "id": "frontend_package_type"
+    },
+    {
+      "label": "scripts",
+      "file_type": "code",
+      "source_file": "frontend/package.json",
+      "source_location": "L6",
+      "community": 1,
+      "norm_label": "scripts",
+      "id": "frontend_package_scripts"
+    },
+    {
+      "label": "dev",
+      "file_type": "code",
+      "source_file": "frontend/package.json",
+      "source_location": "L7",
+      "community": 1,
+      "norm_label": "dev",
+      "id": "frontend_package_scripts_dev"
+    },
+    {
+      "label": "build",
+      "file_type": "code",
+      "source_file": "frontend/package.json",
+      "source_location": "L8",
+      "community": 1,
+      "norm_label": "build",
+      "id": "frontend_package_scripts_build"
+    },
+    {
+      "label": "preview",
+      "file_type": "code",
+      "source_file": "frontend/package.json",
+      "source_location": "L9",
+      "community": 1,
+      "norm_label": "preview",
+      "id": "frontend_package_scripts_preview"
+    },
+    {
+      "label": "dependencies",
+      "file_type": "code",
+      "source_file": "frontend/package.json",
+      "source_location": "L11",
+      "community": 1,
+      "norm_label": "dependencies",
+      "id": "frontend_package_dependencies"
+    },
+    {
+      "label": "fix",
+      "file_type": "code",
+      "source_file": "frontend/package.json",
+      "source_location": "L12",
+      "community": 1,
+      "norm_label": "fix",
+      "id": "frontend_package_dependencies_fix"
+    },
+    {
+      "label": "react",
+      "file_type": "code",
+      "source_file": "frontend/package.json",
+      "source_location": "L13",
+      "community": 1,
+      "norm_label": "react",
+      "id": "frontend_package_dependencies_react"
+    },
+    {
+      "label": "react-dom",
+      "file_type": "code",
+      "source_file": "frontend/package.json",
+      "source_location": "L14",
+      "community": 1,
+      "norm_label": "react-dom",
+      "id": "frontend_package_dependencies_react_dom"
+    },
+    {
+      "label": "devDependencies",
+      "file_type": "code",
+      "source_file": "frontend/package.json",
+      "source_location": "L16",
+      "community": 1,
+      "norm_label": "devdependencies",
+      "id": "frontend_package_devdependencies"
+    },
+    {
+      "label": "@types/react",
+      "file_type": "code",
+      "source_file": "frontend/package.json",
+      "source_location": "L17",
+      "community": 1,
+      "norm_label": "@types/react",
+      "id": "frontend_package_devdependencies_types_react"
+    },
+    {
+      "label": "@types/react-dom",
+      "file_type": "code",
+      "source_file": "frontend/package.json",
+      "source_location": "L18",
+      "community": 1,
+      "norm_label": "@types/react-dom",
+      "id": "frontend_package_devdependencies_types_react_dom"
+    },
+    {
+      "label": "@vitejs/plugin-react",
+      "file_type": "code",
+      "source_file": "frontend/package.json",
+      "source_location": "L19",
+      "community": 1,
+      "norm_label": "@vitejs/plugin-react",
+      "id": "frontend_package_devdependencies_vitejs_plugin_react"
+    },
+    {
+      "label": "autoprefixer",
+      "file_type": "code",
+      "source_file": "frontend/package.json",
+      "source_location": "L20",
+      "community": 1,
+      "norm_label": "autoprefixer",
+      "id": "frontend_package_devdependencies_autoprefixer"
+    },
+    {
+      "label": "postcss",
+      "file_type": "code",
+      "source_file": "frontend/package.json",
+      "source_location": "L21",
+      "community": 1,
+      "norm_label": "postcss",
+      "id": "frontend_package_devdependencies_postcss"
+    },
+    {
+      "label": "tailwindcss",
+      "file_type": "code",
+      "source_file": "frontend/package.json",
+      "source_location": "L22",
+      "community": 1,
+      "norm_label": "tailwindcss",
+      "id": "frontend_package_devdependencies_tailwindcss"
+    },
+    {
+      "label": "typescript",
+      "file_type": "code",
+      "source_file": "frontend/package.json",
+      "source_location": "L23",
+      "community": 1,
+      "norm_label": "typescript",
+      "id": "frontend_package_devdependencies_typescript"
+    },
+    {
+      "label": "vite",
+      "file_type": "code",
+      "source_file": "frontend/package.json",
+      "source_location": "L24",
+      "community": 1,
+      "norm_label": "vite",
+      "id": "frontend_package_devdependencies_vite"
+    },
+    {
+      "label": "postcss.config.js",
+      "file_type": "code",
+      "source_file": "frontend/postcss.config.js",
+      "source_location": "L1",
+      "community": 12,
+      "norm_label": "postcss.config.js",
+      "id": "frontend_postcss_config_js"
+    },
+    {
+      "label": "tailwind.config.js",
+      "file_type": "code",
+      "source_file": "frontend/tailwind.config.js",
+      "source_location": "L1",
+      "community": 13,
+      "norm_label": "tailwind.config.js",
+      "id": "frontend_tailwind_config_js"
+    },
+    {
+      "label": "tsconfig.json",
+      "file_type": "code",
+      "source_file": "frontend/tsconfig.json",
+      "source_location": "L1",
+      "community": 3,
+      "norm_label": "tsconfig.json",
+      "id": "frontend_tsconfig_json"
+    },
+    {
+      "label": "compilerOptions",
+      "file_type": "code",
+      "source_file": "frontend/tsconfig.json",
+      "source_location": "L2",
+      "community": 3,
+      "norm_label": "compileroptions",
+      "id": "frontend_tsconfig_compileroptions"
+    },
+    {
+      "label": "target",
+      "file_type": "code",
+      "source_file": "frontend/tsconfig.json",
+      "source_location": "L3",
+      "community": 3,
+      "norm_label": "target",
+      "id": "frontend_tsconfig_compileroptions_target"
+    },
+    {
+      "label": "useDefineForClassFields",
+      "file_type": "code",
+      "source_file": "frontend/tsconfig.json",
+      "source_location": "L4",
+      "community": 3,
+      "norm_label": "usedefineforclassfields",
+      "id": "frontend_tsconfig_compileroptions_usedefineforclassfields"
+    },
+    {
+      "label": "lib",
+      "file_type": "code",
+      "source_file": "frontend/tsconfig.json",
+      "source_location": "L5",
+      "community": 3,
+      "norm_label": "lib",
+      "id": "frontend_tsconfig_compileroptions_lib"
+    },
+    {
+      "label": "module",
+      "file_type": "code",
+      "source_file": "frontend/tsconfig.json",
+      "source_location": "L6",
+      "community": 3,
+      "norm_label": "module",
+      "id": "frontend_tsconfig_compileroptions_module"
+    },
+    {
+      "label": "skipLibCheck",
+      "file_type": "code",
+      "source_file": "frontend/tsconfig.json",
+      "source_location": "L7",
+      "community": 3,
+      "norm_label": "skiplibcheck",
+      "id": "frontend_tsconfig_compileroptions_skiplibcheck"
+    },
+    {
+      "label": "moduleResolution",
+      "file_type": "code",
+      "source_file": "frontend/tsconfig.json",
+      "source_location": "L8",
+      "community": 3,
+      "norm_label": "moduleresolution",
+      "id": "frontend_tsconfig_compileroptions_moduleresolution"
+    },
+    {
+      "label": "allowImportingTsExtensions",
+      "file_type": "code",
+      "source_file": "frontend/tsconfig.json",
+      "source_location": "L9",
+      "community": 3,
+      "norm_label": "allowimportingtsextensions",
+      "id": "frontend_tsconfig_compileroptions_allowimportingtsextensions"
+    },
+    {
+      "label": "resolveJsonModule",
+      "file_type": "code",
+      "source_file": "frontend/tsconfig.json",
+      "source_location": "L10",
+      "community": 3,
+      "norm_label": "resolvejsonmodule",
+      "id": "frontend_tsconfig_compileroptions_resolvejsonmodule"
+    },
+    {
+      "label": "isolatedModules",
+      "file_type": "code",
+      "source_file": "frontend/tsconfig.json",
+      "source_location": "L11",
+      "community": 3,
+      "norm_label": "isolatedmodules",
+      "id": "frontend_tsconfig_compileroptions_isolatedmodules"
+    },
+    {
+      "label": "noEmit",
+      "file_type": "code",
+      "source_file": "frontend/tsconfig.json",
+      "source_location": "L12",
+      "community": 3,
+      "norm_label": "noemit",
+      "id": "frontend_tsconfig_compileroptions_noemit"
+    },
+    {
+      "label": "jsx",
+      "file_type": "code",
+      "source_file": "frontend/tsconfig.json",
+      "source_location": "L13",
+      "community": 3,
+      "norm_label": "jsx",
+      "id": "frontend_tsconfig_compileroptions_jsx"
+    },
+    {
+      "label": "strict",
+      "file_type": "code",
+      "source_file": "frontend/tsconfig.json",
+      "source_location": "L14",
+      "community": 3,
+      "norm_label": "strict",
+      "id": "frontend_tsconfig_compileroptions_strict"
+    },
+    {
+      "label": "noUnusedLocals",
+      "file_type": "code",
+      "source_file": "frontend/tsconfig.json",
+      "source_location": "L15",
+      "community": 3,
+      "norm_label": "nounusedlocals",
+      "id": "frontend_tsconfig_compileroptions_nounusedlocals"
+    },
+    {
+      "label": "noUnusedParameters",
+      "file_type": "code",
+      "source_file": "frontend/tsconfig.json",
+      "source_location": "L16",
+      "community": 3,
+      "norm_label": "nounusedparameters",
+      "id": "frontend_tsconfig_compileroptions_nounusedparameters"
+    },
+    {
+      "label": "noFallthroughCasesInSwitch",
+      "file_type": "code",
+      "source_file": "frontend/tsconfig.json",
+      "source_location": "L17",
+      "community": 3,
+      "norm_label": "nofallthroughcasesinswitch",
+      "id": "frontend_tsconfig_compileroptions_nofallthroughcasesinswitch"
+    },
+    {
+      "label": "include",
+      "file_type": "code",
+      "source_file": "frontend/tsconfig.json",
+      "source_location": "L19",
+      "community": 3,
+      "norm_label": "include",
+      "id": "frontend_tsconfig_include"
+    },
+    {
+      "label": "vite.config.ts",
+      "file_type": "code",
+      "source_file": "frontend/vite.config.ts",
+      "source_location": "L1",
+      "community": 14,
+      "norm_label": "vite.config.ts",
+      "id": "frontend_vite_config_ts"
+    },
+    {
+      "label": "App.tsx",
+      "file_type": "code",
+      "source_file": "frontend/src/App.tsx",
+      "source_location": "L1",
+      "community": 2,
+      "norm_label": "app.tsx",
+      "id": "frontend_src_app_tsx"
+    },
+    {
+      "label": "App()",
+      "file_type": "code",
+      "source_file": "frontend/src/App.tsx",
+      "source_location": "L9",
+      "community": 2,
+      "norm_label": "app()",
+      "id": "src_app_app"
+    },
+    {
+      "label": "main.tsx",
+      "file_type": "code",
+      "source_file": "frontend/src/main.tsx",
+      "source_location": "L1",
+      "community": 2,
+      "norm_label": "main.tsx",
+      "id": "frontend_src_main_tsx"
+    },
+    {
+      "label": "vite-env.d.ts",
+      "file_type": "code",
+      "source_file": "frontend/src/vite-env.d.ts",
+      "source_location": "L1",
+      "community": 15,
+      "norm_label": "vite-env.d.ts",
+      "id": "frontend_src_vite_env_d_ts"
+    },
+    {
+      "label": "notes.ts",
+      "file_type": "code",
+      "source_file": "frontend/src/api/notes.ts",
+      "source_location": "L1",
+      "community": 2,
+      "norm_label": "notes.ts",
+      "id": "frontend_src_api_notes_ts"
+    },
+    {
+      "label": "API_URL",
+      "file_type": "code",
+      "source_file": "frontend/src/api/notes.ts",
+      "source_location": "L3",
+      "community": 2,
+      "norm_label": "api_url",
+      "id": "api_notes_api_url"
+    },
+    {
+      "label": "fetchNotes()",
+      "file_type": "code",
+      "source_file": "frontend/src/api/notes.ts",
+      "source_location": "L5",
+      "community": 2,
+      "norm_label": "fetchnotes()",
+      "id": "api_notes_fetchnotes"
+    },
+    {
+      "label": "createNote()",
+      "file_type": "code",
+      "source_file": "frontend/src/api/notes.ts",
+      "source_location": "L11",
+      "community": 2,
+      "norm_label": "createnote()",
+      "id": "api_notes_createnote"
+    },
+    {
+      "label": "updateNote()",
+      "file_type": "code",
+      "source_file": "frontend/src/api/notes.ts",
+      "source_location": "L21",
+      "community": 2,
+      "norm_label": "updatenote()",
+      "id": "api_notes_updatenote"
+    },
+    {
+      "label": "deleteNote()",
+      "file_type": "code",
+      "source_file": "frontend/src/api/notes.ts",
+      "source_location": "L31",
+      "community": 2,
+      "norm_label": "deletenote()",
+      "id": "api_notes_deletenote"
+    },
+    {
+      "label": "rhymes.ts",
+      "file_type": "code",
+      "source_file": "frontend/src/api/rhymes.ts",
+      "source_location": "L1",
+      "community": 5,
+      "norm_label": "rhymes.ts",
+      "id": "frontend_src_api_rhymes_ts"
+    },
+    {
+      "label": "API_URL",
+      "file_type": "code",
+      "source_file": "frontend/src/api/rhymes.ts",
+      "source_location": "L1",
+      "community": 5,
+      "norm_label": "api_url",
+      "id": "api_rhymes_api_url"
+    },
+    {
+      "label": "RhymeColumn",
+      "file_type": "code",
+      "source_file": "frontend/src/api/rhymes.ts",
+      "source_location": "L3",
+      "community": 5,
+      "norm_label": "rhymecolumn",
+      "id": "api_rhymes_rhymecolumn"
+    },
+    {
+      "label": "RhymeSection",
+      "file_type": "code",
+      "source_file": "frontend/src/api/rhymes.ts",
+      "source_location": "L11",
+      "community": 5,
+      "norm_label": "rhymesection",
+      "id": "api_rhymes_rhymesection"
+    },
+    {
+      "label": "RhymeResponse",
+      "file_type": "code",
+      "source_file": "frontend/src/api/rhymes.ts",
+      "source_location": "L15",
+      "community": 5,
+      "norm_label": "rhymeresponse",
+      "id": "api_rhymes_rhymeresponse"
+    },
+    {
+      "label": "fetchRhymes()",
+      "file_type": "code",
+      "source_file": "frontend/src/api/rhymes.ts",
+      "source_location": "L20",
+      "community": 5,
+      "norm_label": "fetchrhymes()",
+      "id": "api_rhymes_fetchrhymes"
+    },
+    {
+      "label": "syllables.ts",
+      "file_type": "code",
+      "source_file": "frontend/src/api/syllables.ts",
+      "source_location": "L1",
+      "community": 4,
+      "norm_label": "syllables.ts",
+      "id": "frontend_src_api_syllables_ts"
+    },
+    {
+      "label": "API_URL",
+      "file_type": "code",
+      "source_file": "frontend/src/api/syllables.ts",
+      "source_location": "L1",
+      "community": 4,
+      "norm_label": "api_url",
+      "id": "api_syllables_api_url"
+    },
+    {
+      "label": "SyllableInfo",
+      "file_type": "code",
+      "source_file": "frontend/src/api/syllables.ts",
+      "source_location": "L3",
+      "community": 4,
+      "norm_label": "syllableinfo",
+      "id": "api_syllables_syllableinfo"
+    },
+    {
+      "label": "SyllableOccurrence",
+      "file_type": "code",
+      "source_file": "frontend/src/api/syllables.ts",
+      "source_location": "L8",
+      "community": 4,
+      "norm_label": "syllableoccurrence",
+      "id": "api_syllables_syllableoccurrence"
+    },
+    {
+      "label": "SyllableGroup",
+      "file_type": "code",
+      "source_file": "frontend/src/api/syllables.ts",
+      "source_location": "L14",
+      "community": 4,
+      "norm_label": "syllablegroup",
+      "id": "api_syllables_syllablegroup"
+    },
+    {
+      "label": "AnalyzeResult",
+      "file_type": "code",
+      "source_file": "frontend/src/api/syllables.ts",
+      "source_location": "L20",
+      "community": 4,
+      "norm_label": "analyzeresult",
+      "id": "api_syllables_analyzeresult"
+    },
+    {
+      "label": "fetchAnalysis()",
+      "file_type": "code",
+      "source_file": "frontend/src/api/syllables.ts",
+      "source_location": "L26",
+      "community": 4,
+      "norm_label": "fetchanalysis()",
+      "id": "api_syllables_fetchanalysis"
+    },
+    {
+      "label": "fetchSyllableCounts()",
+      "file_type": "code",
+      "source_file": "frontend/src/api/syllables.ts",
+      "source_location": "L36",
+      "community": 4,
+      "norm_label": "fetchsyllablecounts()",
+      "id": "api_syllables_fetchsyllablecounts"
+    },
+    {
+      "label": "LyricEditor.tsx",
+      "file_type": "code",
+      "source_file": "frontend/src/components/LyricEditor.tsx",
+      "source_location": "L1",
+      "community": 4,
+      "norm_label": "lyriceditor.tsx",
+      "id": "frontend_src_components_lyriceditor_tsx"
+    },
+    {
+      "label": "RHYME_COLORS",
+      "file_type": "code",
+      "source_file": "frontend/src/components/LyricEditor.tsx",
+      "source_location": "L6",
+      "community": 4,
+      "norm_label": "rhyme_colors",
+      "id": "components_lyriceditor_rhyme_colors"
+    },
+    {
+      "label": "EDITOR_STYLE",
+      "file_type": "code",
+      "source_file": "frontend/src/components/LyricEditor.tsx",
+      "source_location": "L21",
+      "community": 4,
+      "norm_label": "editor_style",
+      "id": "components_lyriceditor_editor_style"
+    },
+    {
+      "label": "LyricEditorProps",
+      "file_type": "code",
+      "source_file": "frontend/src/components/LyricEditor.tsx",
+      "source_location": "L31",
+      "community": 4,
+      "norm_label": "lyriceditorprops",
+      "id": "components_lyriceditor_lyriceditorprops"
+    },
+    {
+      "label": "LyricEditor()",
+      "file_type": "code",
+      "source_file": "frontend/src/components/LyricEditor.tsx",
+      "source_location": "L38",
+      "community": 4,
+      "norm_label": "lyriceditor()",
+      "id": "components_lyriceditor_lyriceditor"
+    },
+    {
+      "label": "NotesSidebar.tsx",
+      "file_type": "code",
+      "source_file": "frontend/src/components/NotesSidebar.tsx",
+      "source_location": "L1",
+      "community": 2,
+      "norm_label": "notessidebar.tsx",
+      "id": "frontend_src_components_notessidebar_tsx"
+    },
+    {
+      "label": "NotesSidebarProps",
+      "file_type": "code",
+      "source_file": "frontend/src/components/NotesSidebar.tsx",
+      "source_location": "L3",
+      "community": 2,
+      "norm_label": "notessidebarprops",
+      "id": "components_notessidebar_notessidebarprops"
+    },
+    {
+      "label": "NOTE_TAB_COLORS",
+      "file_type": "code",
+      "source_file": "frontend/src/components/NotesSidebar.tsx",
+      "source_location": "L14",
+      "community": 2,
+      "norm_label": "note_tab_colors",
+      "id": "components_notessidebar_note_tab_colors"
+    },
+    {
+      "label": "LEGEND_CHIPS",
+      "file_type": "code",
+      "source_file": "frontend/src/components/NotesSidebar.tsx",
+      "source_location": "L26",
+      "community": 2,
+      "norm_label": "legend_chips",
+      "id": "components_notessidebar_legend_chips"
+    },
+    {
+      "label": "NotesSidebar()",
+      "file_type": "code",
+      "source_file": "frontend/src/components/NotesSidebar.tsx",
+      "source_location": "L31",
+      "community": 2,
+      "norm_label": "notessidebar()",
+      "id": "components_notessidebar_notessidebar"
+    },
+    {
+      "label": "RhymeDictionary.tsx",
+      "file_type": "code",
+      "source_file": "frontend/src/components/RhymeDictionary.tsx",
+      "source_location": "L1",
+      "community": 5,
+      "norm_label": "rhymedictionary.tsx",
+      "id": "frontend_src_components_rhymedictionary_tsx"
+    },
+    {
+      "label": "RhymeDictionaryProps",
+      "file_type": "code",
+      "source_file": "frontend/src/components/RhymeDictionary.tsx",
+      "source_location": "L4",
+      "community": 5,
+      "norm_label": "rhymedictionaryprops",
+      "id": "components_rhymedictionary_rhymedictionaryprops"
+    },
+    {
+      "label": "ChevronIcon()",
+      "file_type": "code",
+      "source_file": "frontend/src/components/RhymeDictionary.tsx",
+      "source_location": "L11",
+      "community": 5,
+      "norm_label": "chevronicon()",
+      "id": "components_rhymedictionary_chevronicon"
+    },
+    {
+      "label": "SectionProps",
+      "file_type": "code",
+      "source_file": "frontend/src/components/RhymeDictionary.tsx",
+      "source_location": "L32",
+      "community": 5,
+      "norm_label": "sectionprops",
+      "id": "components_rhymedictionary_sectionprops"
+    },
+    {
+      "label": "RhymesSectionPanel()",
+      "file_type": "code",
+      "source_file": "frontend/src/components/RhymeDictionary.tsx",
+      "source_location": "L38",
+      "community": 5,
+      "norm_label": "rhymessectionpanel()",
+      "id": "components_rhymedictionary_rhymessectionpanel"
+    },
+    {
+      "label": "RhymeDictionary()",
+      "file_type": "code",
+      "source_file": "frontend/src/components/RhymeDictionary.tsx",
+      "source_location": "L100",
+      "community": 5,
+      "norm_label": "rhymedictionary()",
+      "id": "components_rhymedictionary_rhymedictionary"
+    },
+    {
+      "label": "useAutoSave.ts",
+      "file_type": "code",
+      "source_file": "frontend/src/hooks/useAutoSave.ts",
+      "source_location": "L1",
+      "community": 2,
+      "norm_label": "useautosave.ts",
+      "id": "frontend_src_hooks_useautosave_ts"
+    },
+    {
+      "label": "SaveStatus",
+      "file_type": "code",
+      "source_file": "frontend/src/hooks/useAutoSave.ts",
+      "source_location": "L4",
+      "community": 2,
+      "norm_label": "savestatus",
+      "id": "hooks_useautosave_savestatus"
+    },
+    {
+      "label": "useAutoSave()",
+      "file_type": "code",
+      "source_file": "frontend/src/hooks/useAutoSave.ts",
+      "source_location": "L6",
+      "community": 2,
+      "norm_label": "useautosave()",
+      "id": "hooks_useautosave_useautosave"
+    },
+    {
+      "label": "note.ts",
+      "file_type": "code",
+      "source_file": "frontend/src/types/note.ts",
+      "source_location": "L1",
+      "community": 2,
+      "norm_label": "note.ts",
+      "id": "frontend_src_types_note_ts"
+    },
+    {
+      "label": "Note",
+      "file_type": "code",
+      "source_file": "frontend/src/types/note.ts",
+      "source_location": "L1",
+      "community": 2,
+      "norm_label": "note",
+      "id": "types_note_note"
+    },
+    {
+      "label": "Rhymathic README",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "community": 6,
+      "norm_label": "rhymathic readme",
+      "id": "readme_rhymathic"
+    },
+    {
+      "label": "Per-line Syllable Count Feature",
+      "file_type": "rationale",
+      "source_file": "README.md",
+      "source_location": "line 8",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "community": 6,
+      "norm_label": "per-line syllable count feature",
+      "id": "readme_feature_syllable_count"
+    },
+    {
+      "label": "Rhyme Highlighting Feature",
+      "file_type": "rationale",
+      "source_file": "README.md",
+      "source_location": "line 9",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "community": 6,
+      "norm_label": "rhyme highlighting feature",
+      "id": "readme_feature_rhyme_highlight"
+    },
+    {
+      "label": "Auto-save Feature",
+      "file_type": "rationale",
+      "source_file": "README.md",
+      "source_location": "line 10",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "community": 6,
+      "norm_label": "auto-save feature",
+      "id": "readme_feature_autosave"
+    },
+    {
+      "label": "CMU Pronouncing Dictionary Usage",
+      "file_type": "rationale",
+      "source_file": "README.md",
+      "source_location": "line 11",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "community": 6,
+      "norm_label": "cmu pronouncing dictionary usage",
+      "id": "readme_feature_cmu"
+    },
+    {
+      "label": "API Endpoint /api/syllables",
+      "file_type": "rationale",
+      "source_file": "README.md",
+      "source_location": "line 115",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "community": 6,
+      "norm_label": "api endpoint /api/syllables",
+      "id": "readme_api_syllables"
+    },
+    {
+      "label": "API Endpoint /api/analyze",
+      "file_type": "rationale",
+      "source_file": "README.md",
+      "source_location": "line 116",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "community": 6,
+      "norm_label": "api endpoint /api/analyze",
+      "id": "readme_api_analyze"
+    },
+    {
+      "label": "API Endpoint /api/notes",
+      "file_type": "rationale",
+      "source_file": "README.md",
+      "source_location": "line 117-120",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "community": 6,
+      "norm_label": "api endpoint /api/notes",
+      "id": "readme_api_notes"
+    },
+    {
+      "label": "Nginx API Proxy Pattern",
+      "file_type": "rationale",
+      "source_file": "README.md",
+      "source_location": "line 78",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "community": 6,
+      "norm_label": "nginx api proxy pattern",
+      "id": "readme_nginx_proxy"
+    },
+    {
+      "label": "FastAPI Dependency",
+      "file_type": "code",
+      "source_file": "backend/requirements.txt",
+      "source_location": "line 1",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "community": 6,
+      "norm_label": "fastapi dependency",
+      "id": "requirements_fastapi"
+    },
+    {
+      "label": "Uvicorn Dependency",
+      "file_type": "code",
+      "source_file": "backend/requirements.txt",
+      "source_location": "line 2",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "community": 16,
+      "norm_label": "uvicorn dependency",
+      "id": "requirements_uvicorn"
+    },
+    {
+      "label": "Pydantic Dependency",
+      "file_type": "code",
+      "source_file": "backend/requirements.txt",
+      "source_location": "line 4",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "community": 17,
+      "norm_label": "pydantic dependency",
+      "id": "requirements_pydantic"
+    },
+    {
+      "label": "Pyphen Dependency",
+      "file_type": "code",
+      "source_file": "backend/requirements.txt",
+      "source_location": "line 5",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "community": 6,
+      "norm_label": "pyphen dependency",
+      "id": "requirements_pyphen"
+    },
+    {
+      "label": "English-words Dependency",
+      "file_type": "code",
+      "source_file": "backend/requirements.txt",
+      "source_location": "line 6",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "community": 18,
+      "norm_label": "english-words dependency",
+      "id": "requirements_english_words"
+    },
+    {
+      "label": "CMUdict Dependency",
+      "file_type": "code",
+      "source_file": "backend/requirements.txt",
+      "source_location": "line 7",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "community": 6,
+      "norm_label": "cmudict dependency",
+      "id": "requirements_cmudict"
+    },
+    {
+      "label": "Python-dotenv Dependency",
+      "file_type": "code",
+      "source_file": "backend/requirements.txt",
+      "source_location": "line 3",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "community": 19,
+      "norm_label": "python-dotenv dependency",
+      "id": "requirements_dotenv"
+    },
+    {
+      "label": "Frontend Entry Point (index.html)",
+      "file_type": "code",
+      "source_file": "frontend/index.html",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "community": 11,
+      "norm_label": "frontend entry point (index.html)",
+      "id": "index_html_root"
+    },
+    {
+      "label": "main.tsx Script Entry",
+      "file_type": "code",
+      "source_file": "frontend/index.html",
+      "source_location": "line 11",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "community": 11,
+      "norm_label": "main.tsx script entry",
+      "id": "index_html_main_tsx"
+    },
+    {
+      "label": "LyricEditor Component",
+      "file_type": "code",
+      "source_file": "frontend/src/components/LyricEditor.tsx",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "community": 10,
+      "norm_label": "lyriceditor component",
+      "id": "debug_lyriceditor_component"
+    },
+    {
+      "label": "Mirror Div Overlay Pattern",
+      "file_type": "rationale",
+      "source_file": "frontend/src/components/LyricEditor.tsx",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "community": 10,
+      "norm_label": "mirror div overlay pattern",
+      "id": "debug_mirror_div_pattern"
+    },
+    {
+      "label": "/api/analyze Endpoint",
+      "file_type": "code",
+      "source_file": "backend/main.py",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "community": 10,
+      "norm_label": "/api/analyze endpoint",
+      "id": "debug_api_analyze"
+    },
+    {
+      "label": "LyricEditor Rhyme Highlight Rendering",
+      "file_type": "code",
+      "source_file": "frontend/src/components/LyricEditor.tsx",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "community": 20,
+      "norm_label": "lyriceditor rhyme highlight rendering",
+      "id": "lyriceditor_rhyme_highlight"
+    },
+    {
+      "label": "/api/analyze Endpoint",
+      "file_type": "code",
+      "source_file": "backend/main.py",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "community": 21,
+      "norm_label": "/api/analyze endpoint",
+      "id": "syllables_api_analyze"
+    },
+    {
+      "label": "RHYME_COLORS Palette",
+      "file_type": "code",
+      "source_file": "frontend/src/components/LyricEditor.tsx",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "community": 22,
+      "norm_label": "rhyme_colors palette",
+      "id": "rhyme_colors_palette"
+    },
+    {
+      "label": "settings.local.json",
+      "file_type": "code",
+      "source_file": "settings.local.json",
+      "source_location": "L1",
+      "id": "settings_local_json",
+      "community": 9,
+      "norm_label": "settings.local.json"
+    },
+    {
+      "label": "permissions",
+      "file_type": "code",
+      "source_file": "settings.local.json",
+      "source_location": "L2",
+      "id": "claude_settings_local_permissions",
+      "community": 9,
+      "norm_label": "permissions"
+    },
+    {
+      "label": "allow",
+      "file_type": "code",
+      "source_file": "settings.local.json",
+      "source_location": "L3",
+      "id": "claude_settings_local_permissions_allow",
+      "community": 9,
+      "norm_label": "allow"
+    }
+  ],
+  "links": [
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".claude/settings.json",
+      "source_location": "L2",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "claude_settings_json",
+      "target": "claude_settings_hooks"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".claude/settings.json",
+      "source_location": "L3",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "claude_settings_hooks",
+      "target": "claude_settings_hooks_pretooluse"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L25",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_py",
+      "target": "backend_main_rhyme_tail"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L51",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_py",
+      "target": "backend_main_vowel_seq"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L67",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_py",
+      "target": "backend_main_get_db"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L76",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_py",
+      "target": "backend_main_init_db"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L92",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_py",
+      "target": "backend_main_lifespan"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L109",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_py",
+      "target": "backend_main_syllablerequest"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L113",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_py",
+      "target": "backend_main_syllableresponse"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L117",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_py",
+      "target": "backend_main_analyzerequest"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L121",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_py",
+      "target": "backend_main_syllableinfo"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L126",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_py",
+      "target": "backend_main_syllableoccurrence"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L132",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_py",
+      "target": "backend_main_syllablegroup"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L138",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_py",
+      "target": "backend_main_analyzeresponse"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L146",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_py",
+      "target": "backend_main_rhymerequest"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L150",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_py",
+      "target": "backend_main_rhymecolumn"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L158",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_py",
+      "target": "backend_main_rhymesection"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L162",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_py",
+      "target": "backend_main_rhymeresponse"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L169",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_py",
+      "target": "backend_main_notecreate"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L174",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_py",
+      "target": "backend_main_noteupdate"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L179",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_py",
+      "target": "backend_main_noteout"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L189",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_py",
+      "target": "backend_main_strip_punct"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L209",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_py",
+      "target": "backend_main_cmu_lookup"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L254",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_py",
+      "target": "backend_main_syllabify_word"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L298",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_py",
+      "target": "backend_main_count_syllables"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L315",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_py",
+      "target": "backend_main_count_line_syllables"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L325",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_py",
+      "target": "backend_main_syllables"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L331",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_py",
+      "target": "backend_main_analyze"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L376",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_py",
+      "target": "backend_main_partitions"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L392",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_py",
+      "target": "backend_main_syllable_count"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L399",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_py",
+      "target": "backend_main_is_english"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L404",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_py",
+      "target": "backend_main_rhymes_for_chunk"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L477",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_py",
+      "target": "backend_main_chunk_phonemes"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L493",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_py",
+      "target": "backend_main_get_rhymes"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L519",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_py",
+      "target": "backend_main_list_notes"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L528",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_py",
+      "target": "backend_main_create_note"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L544",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_py",
+      "target": "backend_main_update_note"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L562",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_py",
+      "target": "backend_main_delete_note"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L436",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_rhyme_tail",
+      "target": "backend_main_rhymes_for_chunk"
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L26",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_rhyme_tail",
+      "target": "backend_main_rationale_26"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L447",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_vowel_seq",
+      "target": "backend_main_rhymes_for_chunk"
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L52",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_vowel_seq",
+      "target": "backend_main_rationale_52"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L520",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_get_db",
+      "target": "backend_main_list_notes"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L530",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_get_db",
+      "target": "backend_main_create_note"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L546",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_get_db",
+      "target": "backend_main_update_note"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L563",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_get_db",
+      "target": "backend_main_delete_note"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L93",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_init_db",
+      "target": "backend_main_lifespan"
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L109",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_syllablerequest",
+      "target": "basemodel"
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L113",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "basemodel",
+      "target": "backend_main_syllableresponse"
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L117",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "basemodel",
+      "target": "backend_main_analyzerequest"
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L121",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "basemodel",
+      "target": "backend_main_syllableinfo"
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L126",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "basemodel",
+      "target": "backend_main_syllableoccurrence"
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L132",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "basemodel",
+      "target": "backend_main_syllablegroup"
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L138",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "basemodel",
+      "target": "backend_main_analyzeresponse"
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L146",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "basemodel",
+      "target": "backend_main_rhymerequest"
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L150",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "basemodel",
+      "target": "backend_main_rhymecolumn"
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L158",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "basemodel",
+      "target": "backend_main_rhymesection"
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L162",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "basemodel",
+      "target": "backend_main_rhymeresponse"
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L169",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "basemodel",
+      "target": "backend_main_notecreate"
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L174",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "basemodel",
+      "target": "backend_main_noteupdate"
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L179",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "basemodel",
+      "target": "backend_main_noteout"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L327",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_syllableresponse",
+      "target": "backend_main_syllables"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L272",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_syllableinfo",
+      "target": "backend_main_syllabify_word"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L361",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_syllableoccurrence",
+      "target": "backend_main_analyze"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L357",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_syllablegroup",
+      "target": "backend_main_analyze"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L367",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_analyzeresponse",
+      "target": "backend_main_analyze"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L504",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_rhymecolumn",
+      "target": "backend_main_get_rhymes"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L511",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_rhymesection",
+      "target": "backend_main_get_rhymes"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L513",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_rhymeresponse",
+      "target": "backend_main_get_rhymes"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L524",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_noteout",
+      "target": "backend_main_list_notes"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L540",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_noteout",
+      "target": "backend_main_create_note"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L558",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_noteout",
+      "target": "backend_main_update_note"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L262",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_strip_punct",
+      "target": "backend_main_syllabify_word"
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L190",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_strip_punct",
+      "target": "backend_main_rationale_190"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L277",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_cmu_lookup",
+      "target": "backend_main_syllabify_word"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L435",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_cmu_lookup",
+      "target": "backend_main_rhymes_for_chunk"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L481",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_cmu_lookup",
+      "target": "backend_main_chunk_phonemes"
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L210",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_cmu_lookup",
+      "target": "backend_main_rationale_210"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L342",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_syllabify_word",
+      "target": "backend_main_analyze"
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L255",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_syllabify_word",
+      "target": "backend_main_rationale_255"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L319",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_count_syllables",
+      "target": "backend_main_count_line_syllables"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L326",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_count_line_syllables",
+      "target": "backend_main_syllables"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L499",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_partitions",
+      "target": "backend_main_get_rhymes"
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L377",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_partitions",
+      "target": "backend_main_rationale_377"
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L400",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_is_english",
+      "target": "backend_main_rationale_400"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L503",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_rhymes_for_chunk",
+      "target": "backend_main_get_rhymes"
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L405",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_rhymes_for_chunk",
+      "target": "backend_main_rationale_405"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L507",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_chunk_phonemes",
+      "target": "backend_main_get_rhymes"
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L478",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "backend_main_chunk_phonemes",
+      "target": "backend_main_rationale_478"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/package.json",
+      "source_location": "L2",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_package_json",
+      "target": "frontend_package_name"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/package.json",
+      "source_location": "L3",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_package_json",
+      "target": "frontend_package_version"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/package.json",
+      "source_location": "L4",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_package_json",
+      "target": "frontend_package_private"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/package.json",
+      "source_location": "L5",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_package_json",
+      "target": "frontend_package_type"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/package.json",
+      "source_location": "L6",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_package_json",
+      "target": "frontend_package_scripts"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/package.json",
+      "source_location": "L11",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_package_json",
+      "target": "frontend_package_dependencies"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/package.json",
+      "source_location": "L16",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_package_json",
+      "target": "frontend_package_devdependencies"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/package.json",
+      "source_location": "L7",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_package_scripts",
+      "target": "frontend_package_scripts_dev"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/package.json",
+      "source_location": "L8",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_package_scripts",
+      "target": "frontend_package_scripts_build"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/package.json",
+      "source_location": "L9",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_package_scripts",
+      "target": "frontend_package_scripts_preview"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/package.json",
+      "source_location": "L12",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_package_dependencies",
+      "target": "frontend_package_dependencies_fix"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/package.json",
+      "source_location": "L13",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_package_dependencies",
+      "target": "frontend_package_dependencies_react"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/package.json",
+      "source_location": "L14",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_package_dependencies",
+      "target": "frontend_package_dependencies_react_dom"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/package.json",
+      "source_location": "L17",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_package_devdependencies",
+      "target": "frontend_package_devdependencies_types_react"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/package.json",
+      "source_location": "L18",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_package_devdependencies",
+      "target": "frontend_package_devdependencies_types_react_dom"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/package.json",
+      "source_location": "L19",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_package_devdependencies",
+      "target": "frontend_package_devdependencies_vitejs_plugin_react"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/package.json",
+      "source_location": "L20",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_package_devdependencies",
+      "target": "frontend_package_devdependencies_autoprefixer"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/package.json",
+      "source_location": "L21",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_package_devdependencies",
+      "target": "frontend_package_devdependencies_postcss"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/package.json",
+      "source_location": "L22",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_package_devdependencies",
+      "target": "frontend_package_devdependencies_tailwindcss"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/package.json",
+      "source_location": "L23",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_package_devdependencies",
+      "target": "frontend_package_devdependencies_typescript"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/package.json",
+      "source_location": "L24",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_package_devdependencies",
+      "target": "frontend_package_devdependencies_vite"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/tsconfig.json",
+      "source_location": "L2",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_tsconfig_json",
+      "target": "frontend_tsconfig_compileroptions"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/tsconfig.json",
+      "source_location": "L19",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_tsconfig_json",
+      "target": "frontend_tsconfig_include"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/tsconfig.json",
+      "source_location": "L3",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_tsconfig_compileroptions",
+      "target": "frontend_tsconfig_compileroptions_target"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/tsconfig.json",
+      "source_location": "L4",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_tsconfig_compileroptions",
+      "target": "frontend_tsconfig_compileroptions_usedefineforclassfields"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/tsconfig.json",
+      "source_location": "L5",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_tsconfig_compileroptions",
+      "target": "frontend_tsconfig_compileroptions_lib"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/tsconfig.json",
+      "source_location": "L6",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_tsconfig_compileroptions",
+      "target": "frontend_tsconfig_compileroptions_module"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/tsconfig.json",
+      "source_location": "L7",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_tsconfig_compileroptions",
+      "target": "frontend_tsconfig_compileroptions_skiplibcheck"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/tsconfig.json",
+      "source_location": "L8",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_tsconfig_compileroptions",
+      "target": "frontend_tsconfig_compileroptions_moduleresolution"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/tsconfig.json",
+      "source_location": "L9",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_tsconfig_compileroptions",
+      "target": "frontend_tsconfig_compileroptions_allowimportingtsextensions"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/tsconfig.json",
+      "source_location": "L10",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_tsconfig_compileroptions",
+      "target": "frontend_tsconfig_compileroptions_resolvejsonmodule"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/tsconfig.json",
+      "source_location": "L11",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_tsconfig_compileroptions",
+      "target": "frontend_tsconfig_compileroptions_isolatedmodules"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/tsconfig.json",
+      "source_location": "L12",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_tsconfig_compileroptions",
+      "target": "frontend_tsconfig_compileroptions_noemit"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/tsconfig.json",
+      "source_location": "L13",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_tsconfig_compileroptions",
+      "target": "frontend_tsconfig_compileroptions_jsx"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/tsconfig.json",
+      "source_location": "L14",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_tsconfig_compileroptions",
+      "target": "frontend_tsconfig_compileroptions_strict"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/tsconfig.json",
+      "source_location": "L15",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_tsconfig_compileroptions",
+      "target": "frontend_tsconfig_compileroptions_nounusedlocals"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/tsconfig.json",
+      "source_location": "L16",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_tsconfig_compileroptions",
+      "target": "frontend_tsconfig_compileroptions_nounusedparameters"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/tsconfig.json",
+      "source_location": "L17",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_tsconfig_compileroptions",
+      "target": "frontend_tsconfig_compileroptions_nofallthroughcasesinswitch"
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/App.tsx",
+      "source_location": "L2",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_src_app_tsx",
+      "target": "frontend_src_components_lyriceditor_tsx"
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/App.tsx",
+      "source_location": "L3",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_src_app_tsx",
+      "target": "frontend_src_components_notessidebar_tsx"
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/App.tsx",
+      "source_location": "L4",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_src_app_tsx",
+      "target": "frontend_src_components_rhymedictionary_tsx"
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/App.tsx",
+      "source_location": "L5",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_src_app_tsx",
+      "target": "frontend_src_hooks_useautosave_ts"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/App.tsx",
+      "source_location": "L5",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_src_app_tsx",
+      "target": "hooks_useautosave_useautosave"
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/App.tsx",
+      "source_location": "L6",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_src_app_tsx",
+      "target": "frontend_src_api_notes_ts"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/App.tsx",
+      "source_location": "L6",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_src_app_tsx",
+      "target": "api_notes_fetchnotes"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/App.tsx",
+      "source_location": "L6",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_src_app_tsx",
+      "target": "api_notes_createnote"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/App.tsx",
+      "source_location": "L6",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_src_app_tsx",
+      "target": "api_notes_deletenote"
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/App.tsx",
+      "source_location": "L7",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_src_app_tsx",
+      "target": "frontend_src_types_note_ts"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/App.tsx",
+      "source_location": "L7",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_src_app_tsx",
+      "target": "types_note_note"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/App.tsx",
+      "source_location": "L9",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_src_app_tsx",
+      "target": "src_app_app"
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/main.tsx",
+      "source_location": "L4",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_src_app_tsx",
+      "target": "frontend_src_main_tsx"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "frontend/src/App.tsx",
+      "source_location": "L18",
+      "weight": 1.0,
+      "source": "src_app_app",
+      "target": "hooks_useautosave_useautosave"
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/api/notes.ts",
+      "source_location": "L1",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_src_api_notes_ts",
+      "target": "frontend_src_types_note_ts"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/api/notes.ts",
+      "source_location": "L1",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_src_api_notes_ts",
+      "target": "types_note_note"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/api/notes.ts",
+      "source_location": "L3",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_src_api_notes_ts",
+      "target": "api_notes_api_url"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/api/notes.ts",
+      "source_location": "L5",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_src_api_notes_ts",
+      "target": "api_notes_fetchnotes"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/api/notes.ts",
+      "source_location": "L11",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_src_api_notes_ts",
+      "target": "api_notes_createnote"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/api/notes.ts",
+      "source_location": "L21",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_src_api_notes_ts",
+      "target": "api_notes_updatenote"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/api/notes.ts",
+      "source_location": "L31",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_src_api_notes_ts",
+      "target": "api_notes_deletenote"
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/hooks/useAutoSave.ts",
+      "source_location": "L2",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_src_api_notes_ts",
+      "target": "frontend_src_hooks_useautosave_ts"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/hooks/useAutoSave.ts",
+      "source_location": "L2",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "api_notes_updatenote",
+      "target": "frontend_src_hooks_useautosave_ts"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/api/rhymes.ts",
+      "source_location": "L1",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_src_api_rhymes_ts",
+      "target": "api_rhymes_api_url"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/api/rhymes.ts",
+      "source_location": "L3",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_src_api_rhymes_ts",
+      "target": "api_rhymes_rhymecolumn"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/api/rhymes.ts",
+      "source_location": "L11",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_src_api_rhymes_ts",
+      "target": "api_rhymes_rhymesection"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/api/rhymes.ts",
+      "source_location": "L15",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_src_api_rhymes_ts",
+      "target": "api_rhymes_rhymeresponse"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/api/rhymes.ts",
+      "source_location": "L20",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_src_api_rhymes_ts",
+      "target": "api_rhymes_fetchrhymes"
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/components/RhymeDictionary.tsx",
+      "source_location": "L2",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_src_api_rhymes_ts",
+      "target": "frontend_src_components_rhymedictionary_tsx"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/components/RhymeDictionary.tsx",
+      "source_location": "L2",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "api_rhymes_rhymesection",
+      "target": "frontend_src_components_rhymedictionary_tsx"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/components/RhymeDictionary.tsx",
+      "source_location": "L2",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "api_rhymes_fetchrhymes",
+      "target": "frontend_src_components_rhymedictionary_tsx"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/api/syllables.ts",
+      "source_location": "L1",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_src_api_syllables_ts",
+      "target": "api_syllables_api_url"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/api/syllables.ts",
+      "source_location": "L3",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_src_api_syllables_ts",
+      "target": "api_syllables_syllableinfo"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/api/syllables.ts",
+      "source_location": "L8",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_src_api_syllables_ts",
+      "target": "api_syllables_syllableoccurrence"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/api/syllables.ts",
+      "source_location": "L14",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_src_api_syllables_ts",
+      "target": "api_syllables_syllablegroup"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/api/syllables.ts",
+      "source_location": "L20",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_src_api_syllables_ts",
+      "target": "api_syllables_analyzeresult"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/api/syllables.ts",
+      "source_location": "L26",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_src_api_syllables_ts",
+      "target": "api_syllables_fetchanalysis"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/api/syllables.ts",
+      "source_location": "L36",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_src_api_syllables_ts",
+      "target": "api_syllables_fetchsyllablecounts"
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/components/LyricEditor.tsx",
+      "source_location": "L2",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_src_api_syllables_ts",
+      "target": "frontend_src_components_lyriceditor_tsx"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/components/LyricEditor.tsx",
+      "source_location": "L2",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "api_syllables_syllableinfo",
+      "target": "frontend_src_components_lyriceditor_tsx"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/components/LyricEditor.tsx",
+      "source_location": "L2",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "api_syllables_syllablegroup",
+      "target": "frontend_src_components_lyriceditor_tsx"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/components/LyricEditor.tsx",
+      "source_location": "L2",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "api_syllables_fetchanalysis",
+      "target": "frontend_src_components_lyriceditor_tsx"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/components/LyricEditor.tsx",
+      "source_location": "L6",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_src_components_lyriceditor_tsx",
+      "target": "components_lyriceditor_rhyme_colors"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/components/LyricEditor.tsx",
+      "source_location": "L21",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_src_components_lyriceditor_tsx",
+      "target": "components_lyriceditor_editor_style"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/components/LyricEditor.tsx",
+      "source_location": "L31",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_src_components_lyriceditor_tsx",
+      "target": "components_lyriceditor_lyriceditorprops"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/components/LyricEditor.tsx",
+      "source_location": "L38",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_src_components_lyriceditor_tsx",
+      "target": "components_lyriceditor_lyriceditor"
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/components/NotesSidebar.tsx",
+      "source_location": "L1",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_src_components_notessidebar_tsx",
+      "target": "frontend_src_types_note_ts"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/components/NotesSidebar.tsx",
+      "source_location": "L1",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_src_components_notessidebar_tsx",
+      "target": "types_note_note"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/components/NotesSidebar.tsx",
+      "source_location": "L3",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_src_components_notessidebar_tsx",
+      "target": "components_notessidebar_notessidebarprops"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/components/NotesSidebar.tsx",
+      "source_location": "L14",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_src_components_notessidebar_tsx",
+      "target": "components_notessidebar_note_tab_colors"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/components/NotesSidebar.tsx",
+      "source_location": "L26",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_src_components_notessidebar_tsx",
+      "target": "components_notessidebar_legend_chips"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/components/NotesSidebar.tsx",
+      "source_location": "L31",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_src_components_notessidebar_tsx",
+      "target": "components_notessidebar_notessidebar"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/components/RhymeDictionary.tsx",
+      "source_location": "L4",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_src_components_rhymedictionary_tsx",
+      "target": "components_rhymedictionary_rhymedictionaryprops"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/components/RhymeDictionary.tsx",
+      "source_location": "L11",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_src_components_rhymedictionary_tsx",
+      "target": "components_rhymedictionary_chevronicon"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/components/RhymeDictionary.tsx",
+      "source_location": "L32",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_src_components_rhymedictionary_tsx",
+      "target": "components_rhymedictionary_sectionprops"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/components/RhymeDictionary.tsx",
+      "source_location": "L38",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_src_components_rhymedictionary_tsx",
+      "target": "components_rhymedictionary_rhymessectionpanel"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/components/RhymeDictionary.tsx",
+      "source_location": "L100",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_src_components_rhymedictionary_tsx",
+      "target": "components_rhymedictionary_rhymedictionary"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/hooks/useAutoSave.ts",
+      "source_location": "L4",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_src_hooks_useautosave_ts",
+      "target": "hooks_useautosave_savestatus"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/hooks/useAutoSave.ts",
+      "source_location": "L6",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_src_hooks_useautosave_ts",
+      "target": "hooks_useautosave_useautosave"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/types/note.ts",
+      "source_location": "L1",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "frontend_src_types_note_ts",
+      "target": "types_note_note"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "README.md",
+      "source_location": "line 8",
+      "weight": 1.0,
+      "source": "readme_rhymathic",
+      "target": "readme_feature_syllable_count"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "README.md",
+      "source_location": "line 9",
+      "weight": 1.0,
+      "source": "readme_rhymathic",
+      "target": "readme_feature_rhyme_highlight"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "README.md",
+      "source_location": "line 10",
+      "weight": 1.0,
+      "source": "readme_rhymathic",
+      "target": "readme_feature_autosave"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "README.md",
+      "source_location": "line 11",
+      "weight": 1.0,
+      "source": "readme_rhymathic",
+      "target": "readme_feature_cmu"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "README.md",
+      "source_location": "line 115",
+      "weight": 1.0,
+      "source": "readme_rhymathic",
+      "target": "readme_api_syllables"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "README.md",
+      "source_location": "line 116",
+      "weight": 1.0,
+      "source": "readme_rhymathic",
+      "target": "readme_api_analyze"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "README.md",
+      "source_location": "line 117",
+      "weight": 1.0,
+      "source": "readme_rhymathic",
+      "target": "readme_api_notes"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "README.md",
+      "source_location": "line 78",
+      "weight": 1.0,
+      "source": "readme_rhymathic",
+      "target": "readme_nginx_proxy"
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "README.md",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "readme_feature_syllable_count",
+      "target": "requirements_pyphen"
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "README.md",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "readme_feature_cmu",
+      "target": "requirements_cmudict"
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "README.md",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "readme_api_syllables",
+      "target": "requirements_fastapi"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "frontend/index.html",
+      "source_location": "line 11",
+      "weight": 1.0,
+      "source": "index_html_root",
+      "target": "index_html_main_tsx"
+    },
+    {
+      "relation": "implements",
+      "confidence": "INFERRED",
+      "confidence_score": 0.88,
+      "source_file": "frontend/src/components/LyricEditor.tsx",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "debug_lyriceditor_component",
+      "target": "debug_mirror_div_pattern"
+    },
+    {
+      "relation": "calls",
+      "confidence": "INFERRED",
+      "confidence_score": 0.9,
+      "source_file": "frontend/src/components/LyricEditor.tsx",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "debug_lyriceditor_component",
+      "target": "debug_api_analyze"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "settings.local.json",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "settings_local_json",
+      "target": "claude_settings_local_permissions",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "settings.local.json",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "claude_settings_local_permissions",
+      "target": "claude_settings_local_permissions_allow",
+      "confidence_score": 1.0
+    }
+  ],
+  "hyperedges": [
+    {
+      "id": "syllabification_pipeline",
+      "label": "Syllabification Pipeline (CMUdict + Pyphen + English-words)",
+      "nodes": [
+        "requirements_cmudict",
+        "requirements_pyphen",
+        "requirements_english_words",
+        "readme_feature_syllable_count",
+        "readme_feature_cmu"
+      ],
+      "relation": "implement",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "backend/requirements.txt"
+    },
+    {
+      "id": "backend_core_deps",
+      "label": "Backend Core Dependencies",
+      "nodes": [
+        "requirements_fastapi",
+        "requirements_uvicorn",
+        "requirements_pydantic",
+        "requirements_dotenv"
+      ],
+      "relation": "implement",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/requirements.txt"
+    }
+  ],
+  "built_at_commit": "97c3eebf1247ed38f2b547273da0db1d536e99b0"
+}

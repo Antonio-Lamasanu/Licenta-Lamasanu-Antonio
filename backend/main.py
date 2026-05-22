@@ -6,6 +6,7 @@ from pydantic import BaseModel
 import cmudict
 import pyphen
 import re
+import requests
 from english_words import get_english_words_set
 import sqlite3
 from itertools import combinations
@@ -31,6 +32,14 @@ def _rhyme_tail(phonemes: list[str]) -> tuple[str, ...] | None:
     for i in range(len(phonemes) - 1, -1, -1):
         if phonemes[i][-1] in '12':
             return tuple(p.rstrip('012') for p in phonemes[i:])
+    return None
+
+
+def _stressed_vowel(phonemes: list[str]) -> str | None:
+    """Return the last primary or secondary stressed vowel phoneme, stress stripped."""
+    for i in range(len(phonemes) - 1, -1, -1):
+        if phonemes[i][-1] in '12':
+            return phonemes[i].rstrip('012')
     return None
 
 
@@ -60,6 +69,22 @@ for _w, _prons in _cmudict.items():
     if _vseq:
         _vowel_seq_index.setdefault(_vseq, []).append(_w)
 
+DATAMUSE_URL = "https://api.datamuse.com/words"
+
+def _datamuse_fetch(rel_param: str, word: str, max_results: int = 100) -> list[str]:
+    """Query Datamuse API. Returns list of words/phrases. Empty list on failure."""
+    try:
+        resp = requests.get(
+            DATAMUSE_URL,
+            params={rel_param: word, "md": "s", "max": max_results},
+            timeout=3,
+        )
+        resp.raise_for_status()
+        return [item["word"] for item in resp.json()]
+    except Exception:
+        return []
+
+
 FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN", "http://localhost:5173")
 DB_PATH = os.getenv("DB_PATH", "notes.db")
 
@@ -82,6 +107,13 @@ def init_db():
             content    TEXT NOT NULL DEFAULT '',
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS saved_searches (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            query      TEXT NOT NULL,
+            created_at TEXT NOT NULL
         )
     """)
     conn.commit()
@@ -119,8 +151,9 @@ class AnalyzeRequest(BaseModel):
 
 
 class SyllableInfo(BaseModel):
-    text: str   # e.g. "hun"
-    key: str    # vowel phoneme e.g. "AH"; empty if word not in CMU dict
+    text: str    # e.g. "hun"
+    key: str     # vowel phoneme e.g. "AH"; empty if word not in CMU dict
+    stress: int = 0  # 0=unstressed, 1=primary, 2=secondary (CMU stress digit)
 
 
 class SyllableOccurrence(BaseModel):
@@ -135,16 +168,27 @@ class SyllableGroup(BaseModel):
     occurrences: list[SyllableOccurrence]
 
 
+class SlantOccurrence(BaseModel):
+    line: int          # which line (0-indexed)
+
+class SlantGroup(BaseModel):
+    color_index: int   # starts after the last syllable_groups color_index
+    vowel_key: str     # the shared stressed vowel phoneme
+    occurrences: list[SlantOccurrence]
+
+
 class AnalyzeResponse(BaseModel):
     line_counts: list[int]
     syllable_data: list[list[list[SyllableInfo]]]  # [line][word][syllable]
     syllable_groups: list[SyllableGroup]
+    slant_groups: list[SlantGroup] = []
 
 
 # --- Rhyme models ---
 
 class RhymeRequest(BaseModel):
     query: str
+    mode: str = "perfect"  # perfect | slant | synonyms | antonyms | descriptive | related | soundslike | homophones | consonants | phrases
 
 
 class RhymeColumn(BaseModel):
@@ -182,6 +226,15 @@ class NoteOut(BaseModel):
     content: str
     created_at: str
     updated_at: str
+
+
+class SavedSearchCreate(BaseModel):
+    query: str
+
+class SavedSearchOut(BaseModel):
+    id: int
+    query: str
+    created_at: str
 
 
 # --- Syllable logic ---
@@ -269,28 +322,28 @@ def syllabify_word(word: str) -> list[SyllableInfo]:
             sub_syls = syllabify_word(part)
             if i > 0 and sub_syls:
                 # Restore the '-' separator before the first syllable of this part
-                sub_syls[0] = SyllableInfo(text='-' + sub_syls[0].text, key=sub_syls[0].key)
+                sub_syls[0] = SyllableInfo(text='-' + sub_syls[0].text, key=sub_syls[0].key, stress=sub_syls[0].stress)
             result.extend(sub_syls)
         return result
 
     clean = core.lower()
     entries = _cmu_lookup(clean)
     if not entries:
-        return [SyllableInfo(text=core, key='')]
+        return [SyllableInfo(text=core, key='', stress=0)]
     phonemes = entries[0]
-    vowel_keys = [ph.rstrip('012') for ph in phonemes if ph.rstrip('012') in VOWEL_PHONEMES]
+    vowel_phonemes_raw = [ph for ph in phonemes if ph.rstrip('012') in VOWEL_PHONEMES]
+    vowel_keys = [ph.rstrip('012') for ph in vowel_phonemes_raw]
+    stress_digits = [int(ph[-1]) if ph[-1].isdigit() else 0 for ph in vowel_phonemes_raw]
     if not vowel_keys:
-        return [SyllableInfo(text=core, key='')]
+        return [SyllableInfo(text=core, key='', stress=0)]
     parts = _pyphen.inserted(clean).split('-')
     if len(parts) != len(vowel_keys):
-        # Orthographic / phonemic count mismatch — treat whole core as one syllable
-        return [SyllableInfo(text=core, key=vowel_keys[-1])]
-    # Map lowercase split positions back to original-case core
+        return [SyllableInfo(text=core, key=vowel_keys[-1], stress=stress_digits[-1])]
     result: list[SyllableInfo] = []
     pos = 0
     for i, part in enumerate(parts):
         syl_text = core[pos: pos + len(part)]
-        result.append(SyllableInfo(text=syl_text, key=vowel_keys[i]))
+        result.append(SyllableInfo(text=syl_text, key=vowel_keys[i], stress=stress_digits[i]))
         pos += len(part)
     return result
 
@@ -364,10 +417,60 @@ def analyze(request: AnalyzeRequest) -> AnalyzeResponse:
             ))
             color_idx += 1
 
+    # --- Slant rhyme groups: lines that share a stressed vowel but not the full rhyme tail ---
+    # Operate on the last non-empty word of each line.
+    line_anchor_data: list[tuple[int, str | None, str | None]] = []
+    for line_idx, line in enumerate(request.lines):
+        words = [re.sub(r"[^\w']", "", w).lower() for w in line.split()]
+        words = [w for w in words if w]
+        if not words:
+            line_anchor_data.append((line_idx, None, None))
+            continue
+        anchor = words[-1]
+        prons = _cmu_lookup(anchor)
+        if not prons:
+            line_anchor_data.append((line_idx, None, None))
+            continue
+        tail_str = " ".join(_rhyme_tail(prons[0])) if _rhyme_tail(prons[0]) else None
+        vowel = _stressed_vowel(prons[0])
+        line_anchor_data.append((line_idx, vowel, tail_str))
+
+    # Group lines by stressed vowel, then exclude lines that already share the same tail
+    vowel_to_lines: dict[str, list[tuple[int, str | None]]] = {}
+    for line_idx, vowel, tail in line_anchor_data:
+        if vowel:
+            vowel_to_lines.setdefault(vowel, []).append((line_idx, tail))
+
+    slant_groups: list[SlantGroup] = []
+    for vowel, entries in vowel_to_lines.items():
+        if len(entries) < 2:
+            continue
+        # Separate by rhyme tail: lines with the same tail are perfect rhymes (skip)
+        tail_buckets: dict[str | None, list[int]] = {}
+        for line_idx, tail in entries:
+            tail_buckets.setdefault(tail, []).append(line_idx)
+        # Lines with different tails that share this vowel = slant rhyme group
+        slant_lines = [
+            line_idx
+            for tail, idxs in tail_buckets.items()
+            for line_idx in idxs
+        ]
+        # Only include lines where not ALL are in the same perfect-rhyme tail
+        unique_tails = {tail for tail, _ in entries if tail is not None}
+        if len(unique_tails) < 2:
+            continue
+        slant_groups.append(SlantGroup(
+            color_index=color_idx,
+            vowel_key=vowel,
+            occurrences=[SlantOccurrence(line=li) for li in sorted(set(slant_lines))],
+        ))
+        color_idx += 1
+
     return AnalyzeResponse(
         line_counts=line_counts,
         syllable_data=syllable_data,
         syllable_groups=syllable_groups,
+        slant_groups=slant_groups,
     )
 
 
@@ -487,6 +590,61 @@ def _chunk_phonemes(group: list[str]) -> list[str]:
     return result
 
 
+_DATAMUSE_MODE_MAP: dict[str, str] = {
+    "slant":       "rel_nry",
+    "synonyms":    "rel_syn",
+    "antonyms":    "rel_ant",
+    "descriptive": "rel_jja",
+    "related":     "ml",
+    "soundslike":  "sl",
+    "homophones":  "rel_hom",
+    "consonants":  "rel_cns",
+    "phrases":     "rel_trg",
+}
+
+def _datamuse_results_for_mode(word: str, mode: str) -> tuple[dict[str, list[str]], dict[str, list[str]]]:
+    """Return (rhymes_by_syllables, other_by_syllables) using Datamuse for the given mode.
+
+    Falls back to empty CMU dicts if Datamuse returns nothing.
+    """
+    rel_param = _DATAMUSE_MODE_MAP.get(mode)
+    if not rel_param:
+        return {}, {}
+
+    words = _datamuse_fetch(rel_param, word)
+
+    # CMU fallback: if Datamuse returns nothing, use phoneme-distance near-rhymes
+    if not words and mode == "slant":
+        prons = _cmu_lookup(word)
+        if prons:
+            vowel = _stressed_vowel(prons[0])
+            if vowel:
+                candidates = [
+                    w for w, pron_list in _cmudict.items()
+                    if w != word and _stressed_vowel(pron_list[0]) == vowel
+                    and _rhyme_tail(pron_list[0]) != _rhyme_tail(prons[0])
+                ]
+                words = candidates[:100]
+
+    by_syl: dict[str, list[str]] = {}
+    other_by_syl: dict[str, list[str]] = {}
+    BUCKET_LIMIT = 50
+
+    for w in words:
+        parts = w.split()
+        count = str(sum(_syllable_count(p) for p in parts))
+        if _is_english(w):
+            bucket = by_syl.setdefault(count, [])
+            if len(bucket) < BUCKET_LIMIT:
+                bucket.append(w)
+        else:
+            bucket = other_by_syl.setdefault(count, [])
+            if len(bucket) < BUCKET_LIMIT:
+                bucket.append(w)
+
+    return by_syl, other_by_syl
+
+
 # --- Rhyme endpoint ---
 
 @app.post("/api/rhymes", response_model=RhymeResponse)
@@ -495,20 +653,39 @@ def get_rhymes(request: RhymeRequest) -> RhymeResponse:
     words = [re.sub(r"[^\w']", "", w).lower() for w in raw]
     words = [w for w in words if w]
 
+    if not words:
+        return RhymeResponse(words=[], sections=[])
+
     sections: list[RhymeSection] = []
-    for partition in _partitions(words):
-        columns: list[RhymeColumn] = []
-        for group in partition:
-            anchor = group[-1]
-            rhymes_en, rhymes_other = _rhymes_for_chunk(group)
-            columns.append(RhymeColumn(
-                chunk=" ".join(group),
+
+    if request.mode == "perfect":
+        # Existing CMU-based perfect rhyme logic (unchanged)
+        for partition in _partitions(words):
+            columns: list[RhymeColumn] = []
+            for group in partition:
+                anchor = group[-1]
+                rhymes_en, rhymes_other = _rhymes_for_chunk(group)
+                columns.append(RhymeColumn(
+                    chunk=" ".join(group),
+                    anchor=anchor,
+                    chunk_phonemes=_chunk_phonemes(group),
+                    rhymes_by_syllables=rhymes_en,
+                    other_rhymes_by_syllables=rhymes_other,
+                ))
+            sections.append(RhymeSection(columns=columns))
+    else:
+        # Datamuse-based modes: use only the last word as the anchor
+        anchor = words[-1]
+        rhymes_en, rhymes_other = _datamuse_results_for_mode(anchor, request.mode)
+        sections.append(RhymeSection(columns=[
+            RhymeColumn(
+                chunk=" ".join(words),
                 anchor=anchor,
-                chunk_phonemes=_chunk_phonemes(group),
+                chunk_phonemes=_chunk_phonemes(words),
                 rhymes_by_syllables=rhymes_en,
                 other_rhymes_by_syllables=rhymes_other,
-            ))
-        sections.append(RhymeSection(columns=columns))
+            )
+        ]))
 
     return RhymeResponse(words=words, sections=sections)
 
@@ -516,11 +693,20 @@ def get_rhymes(request: RhymeRequest) -> RhymeResponse:
 # --- Notes endpoints ---
 
 @app.get("/api/notes", response_model=list[NoteOut])
-def list_notes():
+def list_notes(q: str = ""):
     for conn in get_db():
-        rows = conn.execute(
-            "SELECT id, title, content, created_at, updated_at FROM notes ORDER BY updated_at DESC"
-        ).fetchall()
+        if q.strip():
+            pattern = f"%{q.strip()}%"
+            rows = conn.execute(
+                """SELECT id, title, content, created_at, updated_at FROM notes
+                   WHERE title LIKE ? OR content LIKE ?
+                   ORDER BY updated_at DESC""",
+                (pattern, pattern),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT id, title, content, created_at, updated_at FROM notes ORDER BY updated_at DESC"
+            ).fetchall()
         return [NoteOut(**dict(row)) for row in rows]
 
 
@@ -565,4 +751,41 @@ def delete_note(note_id: int):
         conn.commit()
         if cur.rowcount == 0:
             raise HTTPException(status_code=404, detail="Note not found")
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+# --- Saved searches endpoints ---
+
+@app.get("/api/saved-searches", response_model=list[SavedSearchOut])
+def list_saved_searches():
+    for conn in get_db():
+        rows = conn.execute(
+            "SELECT id, query, created_at FROM saved_searches ORDER BY created_at DESC"
+        ).fetchall()
+        return [SavedSearchOut(**dict(row)) for row in rows]
+
+
+@app.post("/api/saved-searches", response_model=SavedSearchOut, status_code=status.HTTP_201_CREATED)
+def create_saved_search(body: SavedSearchCreate):
+    now = datetime.now(timezone.utc).isoformat()
+    for conn in get_db():
+        cur = conn.execute(
+            "INSERT INTO saved_searches (query, created_at) VALUES (?, ?)",
+            (body.query.strip(), now),
+        )
+        conn.commit()
+        row = conn.execute(
+            "SELECT id, query, created_at FROM saved_searches WHERE id = ?",
+            (cur.lastrowid,),
+        ).fetchone()
+        return SavedSearchOut(**dict(row))
+
+
+@app.delete("/api/saved-searches/{search_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_saved_search(search_id: int):
+    for conn in get_db():
+        cur = conn.execute("DELETE FROM saved_searches WHERE id = ?", (search_id,))
+        conn.commit()
+        if cur.rowcount == 0:
+            raise HTTPException(status_code=404, detail="Saved search not found")
     return Response(status_code=status.HTTP_204_NO_CONTENT)

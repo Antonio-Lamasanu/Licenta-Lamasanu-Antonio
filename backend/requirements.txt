@@ -5,3 +5,4 @@ pydantic==2.8.2
 pyphen==0.17.2
 english-words==2.0.0
 cmudict==1.0.13
+requests==2.32.3

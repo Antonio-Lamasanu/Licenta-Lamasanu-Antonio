@@ -1,11 +1,14 @@
 import { useState, useEffect, useRef } from "react";
-import { fetchRhymes, type RhymeSection } from "../api/rhymes";
+import { fetchRhymes, type RhymeSection, RHYME_MODES, type RhymeMode } from "../api/rhymes";
+import { createSavedSearch } from "../api/savedSearches";
 
 interface RhymeDictionaryProps {
   query: string;
   onQueryChange: (q: string) => void;
   autoMode: boolean;
   onAutoModeToggle: () => void;
+  onCollapse?: () => void;
+  onPin?: (word: string) => void;
 }
 
 function ChevronIcon({ open }: { open: boolean }) {
@@ -33,9 +36,10 @@ interface SectionProps {
   section: RhymeSection;
   isOpen: boolean;
   onToggle: () => void;
+  onPin?: (word: string) => void;
 }
 
-function RhymesSectionPanel({ section, isOpen, onToggle }: SectionProps) {
+function RhymesSectionPanel({ section, isOpen, onToggle, onPin }: SectionProps) {
   const colCount = section.columns.length;
 
   return (
@@ -70,7 +74,18 @@ function RhymesSectionPanel({ section, isOpen, onToggle }: SectionProps) {
                   </div>
                   <div className="rhyme-chip-grid">
                     {words.map((w) => (
-                      <span key={w} className="rhyme-chip">{w}</span>
+                      <span key={w} className="rhyme-chip-wrap">
+                        <span className="rhyme-chip">{w}</span>
+                        {onPin && (
+                          <button
+                            className="rhyme-chip-pin"
+                            onClick={() => onPin(w)}
+                            title="Pin to scratchpad"
+                          >
+                            +
+                          </button>
+                        )}
+                      </span>
                     ))}
                   </div>
                 </div>
@@ -83,7 +98,18 @@ function RhymesSectionPanel({ section, isOpen, onToggle }: SectionProps) {
                     </div>
                     <div className="rhyme-chip-grid">
                       {words.map((w) => (
-                        <span key={w} className="rhyme-chip rhyme-chip--other">{w}</span>
+                        <span key={w} className="rhyme-chip-wrap">
+                          <span className="rhyme-chip rhyme-chip--other">{w}</span>
+                          {onPin && (
+                            <button
+                              className="rhyme-chip-pin"
+                              onClick={() => onPin(w)}
+                              title="Pin to scratchpad"
+                            >
+                              +
+                            </button>
+                          )}
+                        </span>
                       ))}
                     </div>
                   </div>
@@ -102,11 +128,14 @@ export default function RhymeDictionary({
   onQueryChange,
   autoMode,
   onAutoModeToggle,
+  onCollapse,
+  onPin,
 }: RhymeDictionaryProps) {
   const [sections, setSections] = useState<RhymeSection[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Set<number>>(new Set([0]));
+  const [rhymeMode, setRhymeMode] = useState<RhymeMode>("perfect");
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -120,7 +149,7 @@ export default function RhymeDictionary({
       setLoading(true);
       setError(null);
       try {
-        const result = await fetchRhymes(query);
+        const result = await fetchRhymes(query, rhymeMode);
         setSections(result.sections);
         setExpanded(new Set([0]));
       } catch {
@@ -130,14 +159,25 @@ export default function RhymeDictionary({
       }
     }, 400);
     return () => { if (debounceTimer.current) clearTimeout(debounceTimer.current); };
-  }, [query]);
+  }, [query, rhymeMode]);
 
   return (
     <div className="rhyme-panel">
 
       {/* ── Panel header ── */}
       <div className="rhyme-panel-head">
-        <div className="rhyme-eyebrow">Rhyme</div>
+        <div className="rhyme-eyebrow-row">
+          <div className="rhyme-eyebrow">Rhyme Dictionary</div>
+          {onCollapse && (
+            <button
+              className="rhyme-collapse-btn"
+              onClick={onCollapse}
+              aria-label="Collapse rhyme panel"
+            >
+              →
+            </button>
+          )}
+        </div>
 
         <div className="rhyme-follow-row">
           <span className="rhyme-follow-label">Follow cursor</span>
@@ -162,15 +202,32 @@ export default function RhymeDictionary({
         </div>
       </div>
 
-      {/* ── Tabs ── */}
-      <div className="rhyme-tabs">
-        <button className="rhyme-tab rhyme-tab--active">
-          Perfect{sections.length > 0 ? ` (${sections.length})` : ""}
-        </button>
-        {/* TODO: Slant rhymes tab — no backend slant matching */}
-        <button className="rhyme-tab" disabled style={{ opacity: 0.45, cursor: "default" }}>Slant</button>
-        {/* TODO: Multi-syllable rhymes tab — no backend multi matching */}
-        <button className="rhyme-tab" disabled style={{ opacity: 0.45, cursor: "default" }}>Multi</button>
+      {/* ── Mode selector ── */}
+      <div className="rhyme-mode-row">
+        <select
+          className="rhyme-mode-select"
+          value={rhymeMode}
+          onChange={(e) => setRhymeMode(e.target.value as RhymeMode)}
+        >
+          {RHYME_MODES.map((m) => (
+            <option key={m.value} value={m.value}>{m.label}</option>
+          ))}
+        </select>
+        {query.trim() && (
+          <button
+            className="rhyme-save-btn"
+            onClick={async () => {
+              try {
+                await createSavedSearch(query.trim());
+              } catch {
+                // silently ignore — user will see no feedback; Wave 3 adds toast
+              }
+            }}
+            title="Save this search to Library"
+          >
+            ♡ Save
+          </button>
+        )}
       </div>
 
       {/* ── Results ── */}
@@ -212,14 +269,14 @@ export default function RhymeDictionary({
                 return next;
               })
             }
+            onPin={onPin}
           />
         ))}
       </div>
 
       {/* ── Panel footer ── */}
       <div className="rhyme-panel-foot">
-        {/* TODO: Pin to scratchpad — no backend scratchpad */}
-        <button className="rhyme-pin-btn" disabled>+ Pin to scratchpad</button>
+        <span className="rhyme-meta">Hover a word to pin → scratchpad</span>
         <span className="rhyme-meta">CMU dict</span>
       </div>
     </div>

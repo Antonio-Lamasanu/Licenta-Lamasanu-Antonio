@@ -3,7 +3,7 @@ import LyricEditor from "./components/LyricEditor";
 import NotesSidebar from "./components/NotesSidebar";
 import RhymeDictionary from "./components/RhymeDictionary";
 import { useAutoSave } from "./hooks/useAutoSave";
-import { fetchNotes, createNote, deleteNote } from "./api/notes";
+import { fetchNotes, createNote, deleteNote, searchNotes } from "./api/notes";
 import type { Note } from "./types/note";
 
 export default function App() {
@@ -15,10 +15,31 @@ export default function App() {
   const [rhymeQuery, setRhymeQuery] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [autoMode, setAutoMode] = useState(false);
+  const [sidebarSearch, setSidebarSearch] = useState("");
   const { saveStatus, setLastSaved } = useAutoSave(activeNoteId, activeTitle, activeContent);
 
   // NEW: theme toggle state
   const [theme, setTheme] = useState<"light" | "dark">("light");
+
+  // Legend chip color group filtering
+  const [activeColorGroups, setActiveColorGroups] = useState<Set<number> | null>(null);
+
+  function handleColorGroupToggle(index: number) {
+    setActiveColorGroups((prev) => {
+      if (prev === null) {
+        // First click: activate only this group
+        return new Set([index]);
+      }
+      const next = new Set(prev);
+      if (next.has(index)) {
+        next.delete(index);
+        return next.size === 0 ? null : next;
+      } else {
+        next.add(index);
+        return next;
+      }
+    });
+  }
 
   // ── All existing effects + handlers unchanged ──
   useEffect(() => {
@@ -35,6 +56,21 @@ export default function App() {
       })
       .catch(console.error);
   }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (sidebarSearch.trim()) {
+        searchNotes(sidebarSearch)
+          .then(setNotes)
+          .catch(console.error);
+      } else {
+        fetchNotes()
+          .then((loaded) => setNotes(loaded))
+          .catch(console.error);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [sidebarSearch]);
 
   function handleSelectNote(id: number) {
     const note = notes.find((n) => n.id === id);
@@ -86,7 +122,9 @@ export default function App() {
     }
   }
 
-  const lineCount = activeContent ? activeContent.split("\n").length : 0;
+  const lineCount = activeContent
+    ? activeContent.split("\n").filter((l) => l.trim().length > 0).length
+    : 0;
 
   return (
     <div className={`app${theme === "dark" ? " theme-dark" : ""}`}>
@@ -136,6 +174,10 @@ export default function App() {
           onDeleteNote={handleDeleteNote}
           isOpen={sidebarOpen}
           onToggle={() => setSidebarOpen((o) => !o)}
+          searchQuery={sidebarSearch}
+          onSearchChange={setSidebarSearch}
+          activeColorGroups={activeColorGroups}
+          onColorGroupToggle={handleColorGroupToggle}
         />
 
         <main className="editor-pane">
@@ -159,6 +201,8 @@ export default function App() {
                 onContentChange={setActiveContent}
                 onSelectionChange={(q) => { if (!autoMode) setRhymeQuery(q); }}
                 onCursorChange={(q) => { if (autoMode) setRhymeQuery(q); }}
+                isDarkTheme={theme === "dark"}
+                activeColorGroups={activeColorGroups}
               />
             </>
           )}

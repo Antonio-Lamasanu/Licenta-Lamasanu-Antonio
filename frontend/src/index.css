@@ -204,11 +204,17 @@ html, body, #root {
 
 .sidebar-head {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
+  gap: 6px;
   padding: 10px 12px;
   border-bottom: 1px solid var(--rule);
   flex-shrink: 0;
+}
+
+.sidebar-head-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .sidebar-search {
@@ -246,11 +252,25 @@ html, body, #root {
   padding: 1px 4px;
 }
 
+.sidebar-search-clear {
+  background: none;
+  border: none;
+  color: var(--ink-4);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 2px;
+  flex-shrink: 0;
+}
+.sidebar-search-clear:hover { color: var(--ink-2); }
+
 .sidebar-btn-new {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 4px;
-  padding: 5px 10px;
+  padding: 6px 10px;
+  width: 100%;
   background: var(--ink);
   color: var(--panel);
   font-size: 12px;
@@ -259,7 +279,6 @@ html, body, #root {
   border-radius: var(--r-sm);
   cursor: pointer;
   white-space: nowrap;
-  flex-shrink: 0;
   transition: opacity 0.15s;
 }
 .sidebar-btn-new:hover { opacity: 0.85; }
@@ -901,4 +920,108 @@ html, body, #root {
   pointer-events: none;
   user-select: none;
   font-family: var(--mono);
+}
+
+/* ─── Wave 2: Rhyme mode row ─── */
+.rhyme-mode-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--rule);
+  flex-shrink: 0;
+}
+
+.rhyme-mode-select {
+  flex: 1;
+  background: var(--bg-soft);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-sm);
+  color: var(--ink-2);
+  font-family: var(--sans);
+  font-size: 12px;
+  padding: 4px 8px;
+  cursor: pointer;
+  outline: none;
+}
+.rhyme-mode-select:focus { border-color: var(--ink-4); }
+
+.rhyme-save-btn {
+  padding: 4px 10px;
+  font-size: 11.5px;
+  color: var(--ink-3);
+  background: none;
+  border: 1px solid var(--rule);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+.rhyme-save-btn:hover { color: var(--accent); border-color: var(--accent); }
+
+/* ─── Wave 2: Collapse toggle ─── */
+.rhyme-eyebrow-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.rhyme-collapse-btn {
+  padding: 2px 6px;
+  background: none;
+  border: none;
+  color: var(--ink-4);
+  cursor: pointer;
+  border-radius: var(--r-sm);
+  font-size: 14px;
+}
+.rhyme-collapse-btn:hover { color: var(--ink-2); background: var(--bg-soft); }
+
+/* ─── Wave 2: Chip pin button ─── */
+.rhyme-chip-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.rhyme-chip-pin {
+  display: none;
+  position: absolute;
+  right: -8px;
+  top: -6px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: var(--panel);
+  font-size: 10px;
+  line-height: 1;
+  border: none;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+}
+
+.rhyme-chip-wrap:hover .rhyme-chip-pin {
+  display: flex;
+}
+
+/* ─── Wave 2: mirror/textarea box-model fix ─── */
+.lyric-mirror {
+  padding: 0;
+  margin: 0;
+  border: none;
+  box-sizing: border-box;
+}
+
+.lyric-textarea {
+  margin: 0;
+  box-sizing: border-box;
+  -webkit-text-fill-color: transparent;
+}
+
+/* ─── Wave 2: legend chip dim state ─── */
+.legend-chip--dim {
+  opacity: 0.25;
 }
