@@ -1,65 +1,8 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo, useImperativeHandle, forwardRef } from "react";
 import { fetchAnalysis, type SyllableInfo } from "../api/syllables";
+import { getPhonemeColor, getSlantColor, phonemeToColorIndex } from "../utils/phonemeColors";
 
 const DEBOUNCE_MS = 400;
-
-const RHYME_COLORS: { bg: string; ink: string }[] = [
-  { bg: "#FFE7B0", ink: "#6B4A05" }, // a butter
-  { bg: "#FFD0C2", ink: "#7A2A12" }, // b peach
-  { bg: "#D9E8FF", ink: "#1E3A78" }, // c sky
-  { bg: "#E5DCFF", ink: "#3B2877" }, // d lilac
-  { bg: "#C9EBD2", ink: "#1E5E36" }, // e mint
-  { bg: "#FFD9EC", ink: "#7A1F4F" }, // f rose
-  { bg: "#F1E1B8", ink: "#5C4314" }, // g sand
-  { bg: "#CDE7E6", ink: "#1F4E4D" }, // h teal
-  { bg: "#FBE2A8", ink: "#6B4A05" }, // i amber
-  { bg: "#D8E4C2", ink: "#3F4F1F" }, // j olive
-  { bg: "#E8D9CC", ink: "#5A3A22" }, // k clay
-];
-
-// Darker, less saturated palette for dark theme — same hues, lower brightness
-const RHYME_COLORS_DARK: { bg: string; ink: string }[] = [
-  { bg: "#5C4200", ink: "#FFD87A" }, // a butter
-  { bg: "#5C1F0E", ink: "#FFAA8A" }, // b peach
-  { bg: "#0D2550", ink: "#8FB8FF" }, // c sky
-  { bg: "#22144F", ink: "#C4AAFF" }, // d lilac
-  { bg: "#0D3A1E", ink: "#7DD8A0" }, // e mint
-  { bg: "#4A0D2C", ink: "#FFB3D6" }, // f rose
-  { bg: "#3A2800", ink: "#D4B87A" }, // g sand
-  { bg: "#0D3030", ink: "#7DCFCE" }, // h teal
-  { bg: "#3D2800", ink: "#F5CC70" }, // i amber
-  { bg: "#1F2E0A", ink: "#B8D46E" }, // j olive
-  { bg: "#2D1A0A", ink: "#C49878" }, // k clay
-];
-
-// Slant rhyme palettes — same hue as above but ~50% opacity via alpha channel
-const RHYME_COLORS_SLANT: { bg: string; ink: string }[] = [
-  { bg: "#FFE7B066", ink: "#6B4A05" },
-  { bg: "#FFD0C266", ink: "#7A2A12" },
-  { bg: "#D9E8FF66", ink: "#1E3A78" },
-  { bg: "#E5DCFF66", ink: "#3B2877" },
-  { bg: "#C9EBD266", ink: "#1E5E36" },
-  { bg: "#FFD9EC66", ink: "#7A1F4F" },
-  { bg: "#F1E1B866", ink: "#5C4314" },
-  { bg: "#CDE7E666", ink: "#1F4E4D" },
-  { bg: "#FBE2A866", ink: "#6B4A05" },
-  { bg: "#D8E4C266", ink: "#3F4F1F" },
-  { bg: "#E8D9CC66", ink: "#5A3A22" },
-];
-
-const RHYME_COLORS_SLANT_DARK: { bg: string; ink: string }[] = [
-  { bg: "#5C420066", ink: "#FFD87A" },
-  { bg: "#5C1F0E66", ink: "#FFAA8A" },
-  { bg: "#0D255066", ink: "#8FB8FF" },
-  { bg: "#22144F66", ink: "#C4AAFF" },
-  { bg: "#0D3A1E66", ink: "#7DD8A0" },
-  { bg: "#4A0D2C66", ink: "#FFB3D6" },
-  { bg: "#3A280066", ink: "#D4B87A" },
-  { bg: "#0D303066", ink: "#7DCFCE" },
-  { bg: "#3D280066", ink: "#F5CC70" },
-  { bg: "#1F2E0A66", ink: "#B8D46E" },
-  { bg: "#2D1A0A66", ink: "#C49878" },
-];
 
 // Shared style values — must be identical on mirror div and textarea
 const EDITOR_STYLE = {
@@ -70,7 +13,13 @@ const EDITOR_STYLE = {
   letterSpacing: "-0.005em",
   wordSpacing: "normal",
   tabSize: 4,
-};
+  padding: 0,
+  border: "none",
+} as const;
+
+export interface LyricEditorHandle {
+  insertAtCursor: (text: string) => void;
+}
 
 interface LyricEditorProps {
   content: string;
@@ -82,9 +31,10 @@ interface LyricEditorProps {
   showPhonemes?: boolean;
   showStress?: boolean;
   activeColorGroups?: Set<number> | null; // null = show all
+  onGroupsChange?: (groups: Array<{ phonemeKey: string; isSlant: boolean }>) => void;
 }
 
-export default function LyricEditor({
+const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(function LyricEditor({
   content,
   onContentChange,
   onSelectionChange,
@@ -94,20 +44,31 @@ export default function LyricEditor({
   showPhonemes = false,
   showStress = false,
   activeColorGroups = null,
-}: LyricEditorProps) {
+  onGroupsChange,
+}: LyricEditorProps, ref) {
   const [counts, setCounts] = useState<number[]>([]);
   const [syllableData, setSyllableData] = useState<SyllableInfo[][][]>([]);
-  const [syllableColorMap, setSyllableColorMap] = useState<Map<string, number>>(new Map());
-  const [slantColorMap, setSlantColorMap] = useState<Map<number, number>>(new Map());
-  // key = line index, value = color_index from slant_groups
+  const [syllableColorMap, setSyllableColorMap] = useState<Map<string, string>>(new Map());
+  const [slantColorMap, setSlantColorMap] = useState<Map<number, string>>(new Map());
+  // key = line index, value = vowel_key; assumes at most one slant group per line (last write wins)
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const mirrorRef = useRef<HTMLDivElement>(null);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Pick color palettes based on theme
-  const colors = isDarkTheme ? RHYME_COLORS_DARK : RHYME_COLORS;
-  const slantColors = isDarkTheme ? RHYME_COLORS_SLANT_DARK : RHYME_COLORS_SLANT;
+  useImperativeHandle(ref, () => ({
+    insertAtCursor(text: string) {
+      const el = textareaRef.current;
+      if (!el) return;
+      const { selectionStart, selectionEnd, value } = el;
+      const next = value.slice(0, selectionStart) + text + value.slice(selectionEnd);
+      onContentChange(next);
+      requestAnimationFrame(() => {
+        el.selectionStart = el.selectionEnd = selectionStart + text.length;
+        el.focus();
+      });
+    },
+  }), [onContentChange]);
 
   // Internal toolbar state (props take precedence when explicitly passed)
   const [viewMode, setViewMode] = useState<"lyric" | "phonemes" | "stress">("lyric");
@@ -116,6 +77,7 @@ export default function LyricEditor({
   // Derived effective modes: prop takes precedence over internal state
   const effectiveShowPhonemes = showPhonemes || viewMode === "phonemes";
   const effectiveShowStress = showStress || viewMode === "stress";
+  // Prop overrides local state only when it's "underline"; "highlight" (the default) defers to local state
   const effectiveRhymeMode = rhymeMode !== "highlight" ? rhymeMode : localRhymeMode;
 
   const runAnalysis = useCallback((value: string) => {
@@ -125,24 +87,29 @@ export default function LyricEditor({
         setCounts(line_counts);
         setSyllableData(syllable_data);
 
-        const map = new Map<string, number>();
+        const map = new Map<string, string>();
         for (const group of syllable_groups) {
           for (const occ of group.occurrences) {
-            map.set(`${occ.line}:${occ.word_index}:${occ.syllable_index}`, group.color_index);
+            map.set(`${occ.line}:${occ.word_index}:${occ.syllable_index}`, group.phoneme_key);
           }
         }
         setSyllableColorMap(map);
 
-        const slantMap = new Map<number, number>();
+        const slantMap = new Map<number, string>();
         for (const group of slant_groups ?? []) {
           for (const occ of group.occurrences) {
-            slantMap.set(occ.line, group.color_index);
+            slantMap.set(occ.line, group.vowel_key);
           }
         }
         setSlantColorMap(slantMap);
+
+        onGroupsChange?.([
+          ...syllable_groups.map((g) => ({ phonemeKey: g.phoneme_key, isSlant: false })),
+          ...(slant_groups ?? []).map((g) => ({ phonemeKey: g.vowel_key, isSlant: true })),
+        ]);
       })
       .catch(console.error);
-  }, []);
+  }, [onGroupsChange]);
 
   useEffect(() => {
     if (debounceTimer.current !== null) clearTimeout(debounceTimer.current);
@@ -161,7 +128,131 @@ export default function LyricEditor({
     el.style.height = el.scrollHeight + "px";
   }, [content]);
 
-  const lines = content.split("\n");
+  const lines = useMemo(() => content.split("\n"), [content]);
+
+  const renderedLines = useMemo(() => {
+    return lines.map((line, lineIdx) => {
+      const slantVowelKey = slantColorMap.get(lineIdx);
+
+      if (effectiveShowPhonemes) {
+        const wordSylsList = syllableData[lineIdx] ?? [];
+        let phonemeWordIdx = 0;
+        return line.split(/(\s+)/).map((token, ti) => {
+          if (/^\s+$/.test(token)) return token;
+          const currentPhonemeWordIdx = phonemeWordIdx++;
+          const syls = wordSylsList[currentPhonemeWordIdx] ?? [];
+          const phonemeLabel = syls.map((s) => s.key || "·").join("-");
+          return (
+            <span key={ti} className="word-annotation" style={{ position: "relative" }}>
+              <span style={{
+                position: "absolute",
+                top: "-14px",
+                left: 0,
+                fontSize: "9px",
+                fontFamily: "var(--mono)",
+                color: "var(--ink-4)",
+                whiteSpace: "nowrap",
+                pointerEvents: "none",
+              }}>
+                {phonemeLabel}
+              </span>
+              {token}
+            </span>
+          );
+        });
+      }
+
+      const tokens = line.split(/(\s+)/);
+      let wordIdx = 0;
+
+      return tokens.map((token, ti) => {
+        if (/^\s+$/.test(token)) return token;
+
+        const prefixMatch = token.match(/^([^\w']*)/);
+        const suffixMatch = token.match(/([^\w']*$)/);
+        const prefix = prefixMatch?.[1] ?? "";
+        const suffix = suffixMatch?.[1] ?? "";
+        const wordCore = token.slice(prefix.length, token.length - suffix.length) || token;
+        const currentWordIdx = wordIdx++;
+
+        const wordSyls = syllableData[lineIdx]?.[currentWordIdx] ?? [];
+
+        const sylSpans = wordSyls.map((syl, si) => {
+          const phonemeKey = syllableColorMap.get(`${lineIdx}:${currentWordIdx}:${si}`);
+          const ci = phonemeKey !== undefined ? phonemeToColorIndex(phonemeKey) : undefined;
+          const isFiltered = activeColorGroups !== null && ci !== undefined && !activeColorGroups.has(ci);
+
+          if (effectiveShowStress) {
+            const stressBg =
+              syl.stress === 1 ? (isDarkTheme ? "rgba(255,120,80,0.35)" : "rgba(200,80,40,0.18)") :
+              syl.stress === 2 ? (isDarkTheme ? "rgba(255,200,80,0.25)" : "rgba(200,150,40,0.12)") :
+              undefined;
+            return (
+              <span key={si} style={stressBg ? { backgroundColor: stressBg, borderRadius: "2px" } : undefined}>
+                {syl.text}
+              </span>
+            );
+          }
+
+          if (phonemeKey !== undefined && !isFiltered) {
+            const palette = getPhonemeColor(phonemeKey, isDarkTheme);
+            if (effectiveRhymeMode === "underline") {
+              return (
+                <span key={si} style={{ borderBottom: `3px solid ${palette.ink}`, textUnderlineOffset: "3px", color: "inherit" }}>
+                  {syl.text}
+                </span>
+              );
+            }
+            return (
+              <span key={si} style={{ backgroundColor: palette.bg, color: palette.ink, borderRadius: "3px", padding: "0 1px" }}>
+                {syl.text}
+              </span>
+            );
+          }
+
+          const isLastWord = currentWordIdx === (syllableData[lineIdx]?.length ?? 0) - 1;
+          const isLastSyl = si === wordSyls.length - 1;
+          if (slantVowelKey !== undefined && isLastWord && isLastSyl) {
+            const slantPalette = getSlantColor(slantVowelKey, isDarkTheme);
+            if (effectiveRhymeMode === "underline") {
+              return (
+                <span key={si} style={{ borderBottom: `3px dashed ${slantPalette.ink}`, textUnderlineOffset: "3px" }}>
+                  {syl.text}
+                </span>
+              );
+            }
+            return (
+              <span key={si} style={{ backgroundColor: slantPalette.bg, color: "inherit", borderRadius: "3px", padding: "0 1px" }}>
+                {syl.text}
+              </span>
+            );
+          }
+
+          return <span key={si}>{syl.text}</span>;
+        });
+
+        return (
+          <span key={ti}>
+            {prefix}
+            <span className="word-annotation" data-syllables={wordSyls.length > 0 ? String(wordSyls.length) : ""}>
+              {sylSpans.length > 0 ? sylSpans : wordCore}
+            </span>
+            {suffix}
+          </span>
+        );
+      });
+    });
+  }, [
+    lines,
+    syllableData,
+    syllableColorMap,
+    slantColorMap,
+    effectiveShowPhonemes,
+    effectiveShowStress,
+    effectiveRhymeMode,
+    isDarkTheme,
+    activeColorGroups,
+  ]);
 
   function handleSelectionChange() {
     if (!onSelectionChange && !onCursorChange) return;
@@ -227,146 +318,6 @@ export default function LyricEditor({
     onSelectionChange?.(query);
   }
 
-  function renderLine(line: string, lineIdx: number): React.ReactNode {
-    // Slant color for this entire line (applied to last syllable of last word)
-    const slantColorIdx = slantColorMap.get(lineIdx);
-
-    if (effectiveShowPhonemes) {
-      // Phonemes view: show CMU vowel key tags above each word
-      const wordSylsList = syllableData[lineIdx] ?? [];
-      let phonemeWordIdx = 0;
-      return line.split(/(\s+)/).map((token, ti) => {
-        if (/^\s+$/.test(token)) return token;
-        const currentPhonemeWordIdx = phonemeWordIdx++;
-        const syls = wordSylsList[currentPhonemeWordIdx] ?? [];
-        const phonemeLabel = syls.map((s) => s.key || "·").join("-");
-        return (
-          <span key={ti} className="word-annotation" style={{ position: "relative" }}>
-            <span style={{
-              position: "absolute",
-              top: "-14px",
-              left: 0,
-              fontSize: "9px",
-              fontFamily: "var(--mono)",
-              color: "var(--ink-4)",
-              whiteSpace: "nowrap",
-              pointerEvents: "none",
-            }}>
-              {phonemeLabel}
-            </span>
-            {token}
-          </span>
-        );
-      });
-    }
-
-    const tokens = line.split(/(\s+)/);
-    let wordIdx = 0;
-
-    return tokens.map((token, ti) => {
-      if (/^\s+$/.test(token)) return token;
-
-      const prefixMatch = token.match(/^([^\w']*)/);
-      const suffixMatch = token.match(/([^\w']*$)/);
-      const prefix = prefixMatch?.[1] ?? "";
-      const suffix = suffixMatch?.[1] ?? "";
-      const wordCore = token.slice(prefix.length, token.length - suffix.length) || token;
-      const currentWordIdx = wordIdx++;
-
-      const wordSyls = syllableData[lineIdx]?.[currentWordIdx] ?? [];
-
-      const sylSpans = wordSyls.map((syl, si) => {
-        const ci = syllableColorMap.get(`${lineIdx}:${currentWordIdx}:${si}`);
-        const isFiltered = activeColorGroups !== null && ci !== undefined && !activeColorGroups.has(ci);
-
-        if (effectiveShowStress) {
-          // Stress view: tint by stress level, ignore rhyme colors
-          const stressBg =
-            syl.stress === 1 ? (isDarkTheme ? "rgba(255,120,80,0.35)" : "rgba(200,80,40,0.18)") :
-            syl.stress === 2 ? (isDarkTheme ? "rgba(255,200,80,0.25)" : "rgba(200,150,40,0.12)") :
-            undefined;
-          return (
-            <span key={si} style={stressBg ? { backgroundColor: stressBg, borderRadius: "2px" } : undefined}>
-              {syl.text}
-            </span>
-          );
-        }
-
-        if (ci !== undefined && !isFiltered) {
-          const palette = colors[ci % colors.length];
-          if (effectiveRhymeMode === "underline") {
-            return (
-              <span
-                key={si}
-                style={{
-                  borderBottom: `2px solid ${palette.bg}`,
-                  color: "inherit",
-                }}
-              >
-                {syl.text}
-              </span>
-            );
-          }
-          return (
-            <span
-              key={si}
-              style={{
-                backgroundColor: palette.bg,
-                color: palette.ink,
-                borderRadius: "3px",
-                padding: "0 1px",
-              }}
-            >
-              {syl.text}
-            </span>
-          );
-        }
-
-        // Slant coloring: apply to last syllable of last word on this line
-        const isLastWord = currentWordIdx === (syllableData[lineIdx]?.length ?? 0) - 1;
-        const isLastSyl = si === wordSyls.length - 1;
-        if (slantColorIdx !== undefined && isLastWord && isLastSyl) {
-          const slantPalette = slantColors[slantColorIdx % slantColors.length];
-          if (effectiveRhymeMode === "underline") {
-            return (
-              <span key={si} style={{ borderBottom: `2px dashed ${slantPalette.bg}` }}>
-                {syl.text}
-              </span>
-            );
-          }
-          return (
-            <span
-              key={si}
-              style={{
-                backgroundColor: slantPalette.bg,
-                color: "inherit",
-                borderRadius: "3px",
-                padding: "0 1px",
-              }}
-            >
-              {syl.text}
-            </span>
-          );
-        }
-
-        return <span key={si}>{syl.text}</span>;
-      });
-
-      return (
-        <span key={ti}>
-          {prefix}
-          <span
-            className="word-annotation"
-            data-syllables={wordSyls.length > 0 ? String(wordSyls.length) : ""}
-          >
-            {sylSpans.length > 0 ? sylSpans : wordCore}
-          </span>
-          {suffix}
-        </span>
-      );
-    });
-  }
-
   return (
     <div style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden" }}>
 
@@ -399,6 +350,27 @@ export default function LyricEditor({
             onClick={() => setLocalRhymeMode("underline")}
           >Underline</button>
         </div>
+        {effectiveShowStress && (
+          <>
+            <div className="toolbar-sep" />
+            <div className="stress-legend">
+              <span className="stress-legend-item">
+                <span
+                  className="stress-swatch"
+                  style={{ background: isDarkTheme ? "rgba(255,120,80,0.6)" : "rgba(200,80,40,0.35)" }}
+                />
+                primary
+              </span>
+              <span className="stress-legend-item">
+                <span
+                  className="stress-swatch"
+                  style={{ background: isDarkTheme ? "rgba(255,200,80,0.5)" : "rgba(200,150,40,0.28)" }}
+                />
+                secondary
+              </span>
+            </div>
+          </>
+        )}
         <div className="toolbar-spacer" />
         <button
           className="toolbar-action toolbar-action--primary"
@@ -422,7 +394,7 @@ export default function LyricEditor({
         {/* Ruler: line numbers + syllable counts */}
         <div className="lyric-ruler">
           {lines.map((_, i) => (
-            <div key={i} className="ruler-row" style={{ height: EDITOR_STYLE.lineHeight }}>
+            <div key={i} className="ruler-row" style={{ height: effectiveShowPhonemes ? "64px" : EDITOR_STYLE.lineHeight }}>
               <span className="ruler-line-num">{i + 1}</span>
               <span className="ruler-syl-count">{counts[i] ?? ""}</span>
             </div>
@@ -430,16 +402,25 @@ export default function LyricEditor({
         </div>
 
         {/* Body: mirror div + textarea */}
-        <div className="lyric-body">
+        <div className={`lyric-body${effectiveShowPhonemes ? " lyric-body--phonemes" : ""}`}>
           <div
             ref={mirrorRef}
             className="lyric-mirror"
-            style={EDITOR_STYLE}
+            style={{
+              ...EDITOR_STYLE,
+              overflow: effectiveShowPhonemes ? "visible" : "hidden",
+            }}
             aria-hidden="true"
           >
-            {lines.map((line, lineIdx) => (
-              <div key={lineIdx} style={{ height: EDITOR_STYLE.lineHeight }}>
-                {renderLine(line, lineIdx)}
+            {renderedLines.map((rendered, lineIdx) => (
+              <div
+                key={lineIdx}
+                style={{
+                  height: effectiveShowPhonemes ? "64px" : EDITOR_STYLE.lineHeight,
+                  lineHeight: effectiveShowPhonemes ? "64px" : EDITOR_STYLE.lineHeight,
+                }}
+              >
+                {rendered}
               </div>
             ))}
           </div>
@@ -474,7 +455,7 @@ export default function LyricEditor({
         {/* TODO: Meter rail — visualizes syllable count vs. target; no backend target logic */}
         <div className="meter-rail">
           {lines.map((_, i) => (
-            <div key={i} className="meter-row" style={{ height: EDITOR_STYLE.lineHeight }}>
+            <div key={i} className="meter-row" style={{ height: effectiveShowPhonemes ? "64px" : EDITOR_STYLE.lineHeight }}>
               <div className="meter-bar-track" />
             </div>
           ))}
@@ -498,4 +479,6 @@ export default function LyricEditor({
 
     </div>
   );
-}
+});
+
+export default LyricEditor;

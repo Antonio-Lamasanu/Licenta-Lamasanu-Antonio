@@ -32,7 +32,7 @@ export interface AnalyzeResponse {
   line_counts: number[];
   syllable_data: SyllableInfo[][][];  // [line][word][syllable]
   syllable_groups: SyllableGroup[];
-  slant_groups: SlantGroup[];
+  slant_groups?: SlantGroup[];
 }
 
 export async function fetchAnalysis(lines: string[]): Promise<AnalyzeResponse> {
