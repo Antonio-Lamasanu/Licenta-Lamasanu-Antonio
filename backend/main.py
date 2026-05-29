@@ -10,11 +10,15 @@ import requests
 from english_words import get_english_words_set
 import sqlite3
 from itertools import combinations
+import logging
 import os
 from datetime import datetime, timezone
 from dotenv import load_dotenv
 
 load_dotenv()
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
 
 _cmudict = cmudict.dict()
 _pyphen = pyphen.Pyphen(lang='en_US')
@@ -73,6 +77,7 @@ DATAMUSE_URL = "https://api.datamuse.com/words"
 
 def _datamuse_fetch(rel_param: str, word: str, max_results: int = 100) -> list[str]:
     """Query Datamuse API. Returns list of words/phrases. Empty list on failure."""
+    logger.debug("datamuse_fetch called: word=%r rel_param=%r", word, rel_param)
     try:
         resp = requests.get(
             DATAMUSE_URL,
@@ -80,8 +85,11 @@ def _datamuse_fetch(rel_param: str, word: str, max_results: int = 100) -> list[s
             timeout=3,
         )
         resp.raise_for_status()
-        return [item["word"] for item in resp.json()]
-    except Exception:
+        results = [item["word"] for item in resp.json()]
+        logger.debug("datamuse_fetch success: word=%r rel_param=%r count=%d", word, rel_param, len(results))
+        return results
+    except Exception as exc:
+        logger.warning("datamuse_fetch error: word=%r rel_param=%r error=%r", word, rel_param, exc)
         return []
 
 
