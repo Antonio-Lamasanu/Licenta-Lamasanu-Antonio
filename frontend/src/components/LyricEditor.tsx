@@ -1,65 +1,13 @@
-import { useState, useEffect, useRef, useCallback } from "react";
-import { fetchAnalysis, type SyllableInfo } from "../api/syllables";
+import { useState, useEffect, useRef, useCallback, forwardRef, useImperativeHandle } from "react";
+import { fetchAnalysis, type SyllableInfo, type ActiveGroup } from "../api/syllables";
+import {
+  RHYME_COLORS,
+  RHYME_COLORS_DARK,
+  RHYME_COLORS_SLANT,
+  RHYME_COLORS_SLANT_DARK,
+} from "../phonemeColors";
 
 const DEBOUNCE_MS = 400;
-
-const RHYME_COLORS: { bg: string; ink: string }[] = [
-  { bg: "#FFE7B0", ink: "#6B4A05" }, // a butter
-  { bg: "#FFD0C2", ink: "#7A2A12" }, // b peach
-  { bg: "#D9E8FF", ink: "#1E3A78" }, // c sky
-  { bg: "#E5DCFF", ink: "#3B2877" }, // d lilac
-  { bg: "#C9EBD2", ink: "#1E5E36" }, // e mint
-  { bg: "#FFD9EC", ink: "#7A1F4F" }, // f rose
-  { bg: "#F1E1B8", ink: "#5C4314" }, // g sand
-  { bg: "#CDE7E6", ink: "#1F4E4D" }, // h teal
-  { bg: "#FBE2A8", ink: "#6B4A05" }, // i amber
-  { bg: "#D8E4C2", ink: "#3F4F1F" }, // j olive
-  { bg: "#E8D9CC", ink: "#5A3A22" }, // k clay
-];
-
-// Darker, less saturated palette for dark theme — same hues, lower brightness
-const RHYME_COLORS_DARK: { bg: string; ink: string }[] = [
-  { bg: "#5C4200", ink: "#FFD87A" }, // a butter
-  { bg: "#5C1F0E", ink: "#FFAA8A" }, // b peach
-  { bg: "#0D2550", ink: "#8FB8FF" }, // c sky
-  { bg: "#22144F", ink: "#C4AAFF" }, // d lilac
-  { bg: "#0D3A1E", ink: "#7DD8A0" }, // e mint
-  { bg: "#4A0D2C", ink: "#FFB3D6" }, // f rose
-  { bg: "#3A2800", ink: "#D4B87A" }, // g sand
-  { bg: "#0D3030", ink: "#7DCFCE" }, // h teal
-  { bg: "#3D2800", ink: "#F5CC70" }, // i amber
-  { bg: "#1F2E0A", ink: "#B8D46E" }, // j olive
-  { bg: "#2D1A0A", ink: "#C49878" }, // k clay
-];
-
-// Slant rhyme palettes — same hue as above but ~50% opacity via alpha channel
-const RHYME_COLORS_SLANT: { bg: string; ink: string }[] = [
-  { bg: "#FFE7B066", ink: "#6B4A05" },
-  { bg: "#FFD0C266", ink: "#7A2A12" },
-  { bg: "#D9E8FF66", ink: "#1E3A78" },
-  { bg: "#E5DCFF66", ink: "#3B2877" },
-  { bg: "#C9EBD266", ink: "#1E5E36" },
-  { bg: "#FFD9EC66", ink: "#7A1F4F" },
-  { bg: "#F1E1B866", ink: "#5C4314" },
-  { bg: "#CDE7E666", ink: "#1F4E4D" },
-  { bg: "#FBE2A866", ink: "#6B4A05" },
-  { bg: "#D8E4C266", ink: "#3F4F1F" },
-  { bg: "#E8D9CC66", ink: "#5A3A22" },
-];
-
-const RHYME_COLORS_SLANT_DARK: { bg: string; ink: string }[] = [
-  { bg: "#5C420066", ink: "#FFD87A" },
-  { bg: "#5C1F0E66", ink: "#FFAA8A" },
-  { bg: "#0D255066", ink: "#8FB8FF" },
-  { bg: "#22144F66", ink: "#C4AAFF" },
-  { bg: "#0D3A1E66", ink: "#7DD8A0" },
-  { bg: "#4A0D2C66", ink: "#FFB3D6" },
-  { bg: "#3A280066", ink: "#D4B87A" },
-  { bg: "#0D303066", ink: "#7DCFCE" },
-  { bg: "#3D280066", ink: "#F5CC70" },
-  { bg: "#1F2E0A66", ink: "#B8D46E" },
-  { bg: "#2D1A0A66", ink: "#C49878" },
-];
 
 // Shared style values — must be identical on mirror div and textarea
 const EDITOR_STYLE = {
@@ -72,6 +20,10 @@ const EDITOR_STYLE = {
   tabSize: 4,
 };
 
+export interface LyricEditorHandle {
+  insertAtCursor: (text: string) => void;
+}
+
 interface LyricEditorProps {
   content: string;
   onContentChange: (value: string) => void;
@@ -82,19 +34,25 @@ interface LyricEditorProps {
   showPhonemes?: boolean;
   showStress?: boolean;
   activeColorGroups?: Set<number> | null; // null = show all
+  onGroupsChange?: (groups: ActiveGroup[]) => void;
 }
 
-export default function LyricEditor({
-  content,
-  onContentChange,
-  onSelectionChange,
-  onCursorChange,
-  isDarkTheme = false,
-  rhymeMode = "highlight",
-  showPhonemes = false,
-  showStress = false,
-  activeColorGroups = null,
-}: LyricEditorProps) {
+const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
+  function LyricEditor(
+    {
+      content,
+      onContentChange,
+      onSelectionChange,
+      onCursorChange,
+      isDarkTheme = false,
+      rhymeMode = "highlight",
+      showPhonemes = false,
+      showStress = false,
+      activeColorGroups = null,
+      onGroupsChange,
+    }: LyricEditorProps,
+    ref
+  ) {
   const [counts, setCounts] = useState<number[]>([]);
   const [syllableData, setSyllableData] = useState<SyllableInfo[][][]>([]);
   const [syllableColorMap, setSyllableColorMap] = useState<Map<string, number>>(new Map());
@@ -102,6 +60,21 @@ export default function LyricEditor({
   // key = line index, value = color_index from slant_groups
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useImperativeHandle(ref, () => ({
+    insertAtCursor(text: string) {
+      const el = textareaRef.current;
+      if (!el) return;
+      const { selectionStart, selectionEnd, value } = el;
+      const newValue = value.slice(0, selectionStart) + text + value.slice(selectionEnd);
+      onContentChange(newValue);
+      requestAnimationFrame(() => {
+        el.setSelectionRange(selectionStart + text.length, selectionStart + text.length);
+        el.focus();
+      });
+    },
+  }));
+
   const mirrorRef = useRef<HTMLDivElement>(null);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -140,9 +113,25 @@ export default function LyricEditor({
           }
         }
         setSlantColorMap(slantMap);
+
+        if (onGroupsChange) {
+          const groups: ActiveGroup[] = [
+            ...syllable_groups.map((g) => ({
+              phonemeKey: g.phoneme_key,
+              isSlant: false,
+              colorIndex: g.color_index,
+            })),
+            ...(slant_groups ?? []).map((g) => ({
+              phonemeKey: g.vowel_key,
+              isSlant: true,
+              colorIndex: g.color_index,
+            })),
+          ];
+          onGroupsChange(groups);
+        }
       })
       .catch(console.error);
-  }, []);
+  }, [onGroupsChange]);
 
   useEffect(() => {
     if (debounceTimer.current !== null) clearTimeout(debounceTimer.current);
@@ -499,3 +488,6 @@ export default function LyricEditor({
     </div>
   );
 }
+);
+
+export default LyricEditor;
