@@ -137,6 +137,12 @@ export default function RhymeDictionary({
   const [expanded, setExpanded] = useState<Set<number>>(new Set([0]));
   const [rhymeMode, setRhymeMode] = useState<RhymeMode>("perfect");
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [saved, setSaved] = useState<null | "saved" | "error">(null);
+  const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => { if (savedTimer.current) clearTimeout(savedTimer.current); };
+  }, []);
 
   useEffect(() => {
     if (debounceTimer.current) clearTimeout(debounceTimer.current);
@@ -215,17 +221,21 @@ export default function RhymeDictionary({
         </select>
         {query.trim() && (
           <button
-            className="rhyme-save-btn"
+            className={`rhyme-save-btn${saved === "error" ? " rhyme-save-btn--error" : ""}`}
             onClick={async () => {
               try {
                 await createSavedSearch(query.trim());
+                setSaved("saved");
               } catch {
-                // silently ignore — user will see no feedback; Wave 3 adds toast
+                setSaved("error");
+              } finally {
+                if (savedTimer.current) clearTimeout(savedTimer.current);
+                savedTimer.current = setTimeout(() => setSaved(null), 2000);
               }
             }}
             title="Save this search to Library"
           >
-            ♡ Save
+            {saved === "saved" ? "✓ Saved" : saved === "error" ? "Failed" : "♡ Save"}
           </button>
         )}
       </div>

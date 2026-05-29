@@ -786,6 +786,7 @@ html, body, #root {
 
 .rhyme-results {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -958,6 +959,10 @@ html, body, #root {
   transition: all 0.15s;
 }
 .rhyme-save-btn:hover { color: var(--accent); border-color: var(--accent); }
+.rhyme-save-btn--error {
+  color: var(--accent);
+  border-color: var(--accent);
+}
 
 /* ─── Wave 2: Collapse toggle ─── */
 .rhyme-eyebrow-row {
@@ -1006,6 +1011,100 @@ html, body, #root {
 .rhyme-chip-wrap:hover .rhyme-chip-pin {
   display: flex;
 }
+
+/* ── Scratchpad ─────────────────────────────── */
+
+.scratchpad-panel {
+  position: fixed;
+  z-index: 200;
+  width: 240px;
+  background: var(--bg-soft);
+  border: 1px solid var(--rule-2);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+}
+
+.scratchpad-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  cursor: grab;
+  user-select: none;
+  border-bottom: 1px solid var(--rule-2);
+}
+
+.scratchpad-header:active { cursor: grabbing; }
+
+.scratchpad-title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.scratchpad-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--ink-4);
+  font-size: 16px;
+  line-height: 1;
+  padding: 0 2px;
+}
+
+.scratchpad-close:hover { color: var(--ink-2); }
+
+.scratchpad-body {
+  padding: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 48px;
+}
+
+.scratchpad-empty {
+  font-size: 11px;
+  color: var(--ink-4);
+  width: 100%;
+  text-align: center;
+  padding: 8px 0;
+}
+
+.scratchpad-chip-wrap {
+  display: inline-flex;
+  align-items: center;
+  background: var(--bg-deep);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.scratchpad-chip {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 3px 6px;
+  font-size: 12px;
+  color: var(--ink-2);
+  font-family: var(--mono);
+}
+
+.scratchpad-chip:hover { background: var(--bg-soft); }
+
+.scratchpad-chip-remove {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 3px 5px 3px 2px;
+  font-size: 13px;
+  color: var(--ink-4);
+  line-height: 1;
+}
+
+.scratchpad-chip-remove:hover { color: var(--accent); }
 
 /* ─── Wave 2: mirror/textarea box-model fix ─── */
 .lyric-mirror {
