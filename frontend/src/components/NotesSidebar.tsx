@@ -1,4 +1,6 @@
 import type { Note } from "../types/note";
+import type { ActiveGroup } from "../api/syllables";
+import { RHYME_COLORS, RHYME_COLORS_SLANT } from "../phonemeColors";
 
 interface NotesSidebarProps {
   notes: Note[];
@@ -12,6 +14,7 @@ interface NotesSidebarProps {
   onSearchChange: (q: string) => void;
   activeColorGroups: Set<number> | null;
   onColorGroupToggle: (index: number) => void;
+  activeGroups: ActiveGroup[];
 }
 
 // Colors cycling a-h for note left-tab strip
@@ -26,12 +29,6 @@ const NOTE_TAB_COLORS = [
   "#4A8584", // h
 ];
 
-// Legend chip colors (lighter palette matching rhyme highlight colors)
-const LEGEND_CHIPS = [
-  "#FFE7B0", "#FFD0C2", "#D9E8FF", "#E5DCFF",
-  "#C9EBD2", "#FFD9EC", "#F1E1B8", "#CDE7E6",
-];
-
 export default function NotesSidebar({
   notes,
   activeNoteId,
@@ -44,6 +41,7 @@ export default function NotesSidebar({
   onSearchChange,
   activeColorGroups,
   onColorGroupToggle,
+  activeGroups,
 }: NotesSidebarProps) {
   if (!isOpen) {
     return (
@@ -142,21 +140,28 @@ export default function NotesSidebar({
         ))}
       </div>
 
-      {/* ── Legend chips ── */}
-      <div className="sidebar-legend">
-        {LEGEND_CHIPS.map((color, i) => {
-          const isActive = activeColorGroups === null || activeColorGroups.has(i);
-          return (
-            <div
-              key={i}
-              className={`legend-chip${isActive ? "" : " legend-chip--dim"}`}
-              style={{ background: color, cursor: "pointer" }}
-              title={`Filter rhyme group ${String.fromCharCode(97 + i)}`}
-              onClick={() => onColorGroupToggle(i)}
-            />
-          );
-        })}
-      </div>
+      {activeGroups.length > 0 && (
+        <div className="sidebar-legend">
+          {activeGroups.map((group) => {
+            const palette = group.isSlant
+              ? RHYME_COLORS_SLANT[group.colorIndex % RHYME_COLORS_SLANT.length]
+              : RHYME_COLORS[group.colorIndex % RHYME_COLORS.length];
+            const isActive =
+              activeColorGroups === null || activeColorGroups.has(group.colorIndex);
+            return (
+              <div
+                key={`${group.colorIndex}-${group.isSlant}`}
+                className={`legend-chip${isActive ? "" : " legend-chip--dim"}`}
+                style={{ background: palette.bg, cursor: "pointer" }}
+                title={`${group.isSlant ? "Slant rhyme" : "Rhyme"}: ${group.phonemeKey}`}
+                onClick={() => onColorGroupToggle(group.colorIndex)}
+              >
+                <span className="legend-chip-label">{group.phonemeKey}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

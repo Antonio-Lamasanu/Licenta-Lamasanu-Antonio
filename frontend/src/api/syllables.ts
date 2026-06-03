@@ -35,6 +35,12 @@ export interface AnalyzeResponse {
   slant_groups?: SlantGroup[];
 }
 
+export interface ActiveGroup {
+  phonemeKey: string;
+  isSlant: boolean;
+  colorIndex: number;
+}
+
 export async function fetchAnalysis(lines: string[]): Promise<AnalyzeResponse> {
   const response = await fetch(`${API_URL}/api/analyze`, {
     method: "POST",

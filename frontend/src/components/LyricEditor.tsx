@@ -1,6 +1,11 @@
-import { useState, useEffect, useRef, useCallback, useMemo, useImperativeHandle, forwardRef } from "react";
-import { fetchAnalysis, type SyllableInfo } from "../api/syllables";
-import { getPhonemeColor, getSlantColor, phonemeToColorIndex } from "../utils/phonemeColors";
+import { useState, useEffect, useRef, useCallback, forwardRef, useImperativeHandle } from "react";
+import { fetchAnalysis, type SyllableInfo, type ActiveGroup } from "../api/syllables";
+import {
+  RHYME_COLORS,
+  RHYME_COLORS_DARK,
+  RHYME_COLORS_SLANT,
+  RHYME_COLORS_SLANT_DARK,
+} from "../phonemeColors";
 
 const DEBOUNCE_MS = 400;
 
@@ -21,6 +26,10 @@ export interface LyricEditorHandle {
   insertAtCursor: (text: string) => void;
 }
 
+export interface LyricEditorHandle {
+  insertAtCursor: (text: string) => void;
+}
+
 interface LyricEditorProps {
   content: string;
   onContentChange: (value: string) => void;
@@ -31,21 +40,25 @@ interface LyricEditorProps {
   showPhonemes?: boolean;
   showStress?: boolean;
   activeColorGroups?: Set<number> | null; // null = show all
-  onGroupsChange?: (groups: Array<{ phonemeKey: string; isSlant: boolean }>) => void;
+  onGroupsChange?: (groups: ActiveGroup[]) => void;
 }
 
-const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(function LyricEditor({
-  content,
-  onContentChange,
-  onSelectionChange,
-  onCursorChange,
-  isDarkTheme = false,
-  rhymeMode = "highlight",
-  showPhonemes = false,
-  showStress = false,
-  activeColorGroups = null,
-  onGroupsChange,
-}: LyricEditorProps, ref) {
+const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
+  function LyricEditor(
+    {
+      content,
+      onContentChange,
+      onSelectionChange,
+      onCursorChange,
+      isDarkTheme = false,
+      rhymeMode = "highlight",
+      showPhonemes = false,
+      showStress = false,
+      activeColorGroups = null,
+      onGroupsChange,
+    }: LyricEditorProps,
+    ref
+  ) {
   const [counts, setCounts] = useState<number[]>([]);
   const [syllableData, setSyllableData] = useState<SyllableInfo[][][]>([]);
   const [syllableColorMap, setSyllableColorMap] = useState<Map<string, string>>(new Map());
@@ -53,6 +66,21 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(function Lyr
   // key = line index, value = vowel_key; assumes at most one slant group per line (last write wins)
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useImperativeHandle(ref, () => ({
+    insertAtCursor(text: string) {
+      const el = textareaRef.current;
+      if (!el) return;
+      const { selectionStart, selectionEnd, value } = el;
+      const newValue = value.slice(0, selectionStart) + text + value.slice(selectionEnd);
+      onContentChange(newValue);
+      requestAnimationFrame(() => {
+        el.setSelectionRange(selectionStart + text.length, selectionStart + text.length);
+        el.focus();
+      });
+    },
+  }));
+
   const mirrorRef = useRef<HTMLDivElement>(null);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -103,10 +131,21 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(function Lyr
         }
         setSlantColorMap(slantMap);
 
-        onGroupsChange?.([
-          ...syllable_groups.map((g) => ({ phonemeKey: g.phoneme_key, isSlant: false })),
-          ...(slant_groups ?? []).map((g) => ({ phonemeKey: g.vowel_key, isSlant: true })),
-        ]);
+        if (onGroupsChange) {
+          const groups: ActiveGroup[] = [
+            ...syllable_groups.map((g) => ({
+              phonemeKey: g.phoneme_key,
+              isSlant: false,
+              colorIndex: g.color_index,
+            })),
+            ...(slant_groups ?? []).map((g) => ({
+              phonemeKey: g.vowel_key,
+              isSlant: true,
+              colorIndex: g.color_index,
+            })),
+          ];
+          onGroupsChange(groups);
+        }
       })
       .catch(console.error);
   }, [onGroupsChange]);
@@ -479,6 +518,7 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(function Lyr
 
     </div>
   );
-});
+}
+);
 
 export default LyricEditor;

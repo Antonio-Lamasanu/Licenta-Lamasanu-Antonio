@@ -1,47 +1,76 @@
-import { useState, useEffect } from "react";
-import LyricEditor from "./components/LyricEditor";
+import { useState, useEffect, useRef } from "react";
+import LyricEditor, { type LyricEditorHandle } from "./components/LyricEditor";
 import NotesSidebar from "./components/NotesSidebar";
 import RhymeDictionary from "./components/RhymeDictionary";
+import LibraryPanel from "./components/LibraryPanel";
+import VoicePanel from "./components/VoicePanel";
+import Scratchpad from "./components/Scratchpad";
 import { useAutoSave } from "./hooks/useAutoSave";
 import { fetchNotes, createNote, deleteNote, searchNotes } from "./api/notes";
 import type { Note } from "./types/note";
+import type { ActiveGroup } from "./api/syllables";
 
 export default function App() {
-  // ── All existing state unchanged ──
+  // ── Notes state ──
   const [notes, setNotes] = useState<Note[]>([]);
   const [activeNoteId, setActiveNoteId] = useState<number | null>(null);
   const [activeTitle, setActiveTitle] = useState("");
   const [activeContent, setActiveContent] = useState("");
-  const [rhymeQuery, setRhymeQuery] = useState("");
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [autoMode, setAutoMode] = useState(false);
-  const [sidebarSearch, setSidebarSearch] = useState("");
   const { saveStatus, setLastSaved } = useAutoSave(activeNoteId, activeTitle, activeContent);
 
-  // NEW: theme toggle state
-  const [theme, setTheme] = useState<"light" | "dark">("light");
+  // ── Theme: 3-state light / dark / auto ──
+  const [themeMode, setThemeMode] = useState<"light" | "dark" | "auto">("auto");
+  const [systemDark, setSystemDark] = useState(
+    () => window.matchMedia("(prefers-color-scheme: dark)").matches
+  );
+  const isDark = themeMode === "dark" || (themeMode === "auto" && systemDark);
 
-  // Legend chip color group filtering
+  // ── Layout state ──
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [rhymePanelOpen, setRhymePanelOpen] = useState(true);
+  const [activeTab, setActiveTab] = useState<"write" | "library" | "voice">("write");
+
+  // ── Rhyme query + auto mode ──
+  const [rhymeQuery, setRhymeQuery] = useState("");
+  const [autoMode, setAutoMode] = useState(false);
+  const [sidebarSearch, setSidebarSearch] = useState("");
+
+  // ── Active rhyme groups (emitted by LyricEditor after each analysis) ──
+  const [activeGroups, setActiveGroups] = useState<ActiveGroup[]>([]);
   const [activeColorGroups, setActiveColorGroups] = useState<Set<number> | null>(null);
 
-  function handleColorGroupToggle(index: number) {
-    setActiveColorGroups((prev) => {
-      if (prev === null) {
-        // First click: activate only this group
-        return new Set([index]);
-      }
-      const next = new Set(prev);
-      if (next.has(index)) {
-        next.delete(index);
-        return next.size === 0 ? null : next;
-      } else {
-        next.add(index);
-        return next;
+  // ── Scratchpad ──
+  const [scratchpadWords, setScratchpadWords] = useState<string[]>([]);
+  const [scratchpadOpen, setScratchpadOpen] = useState(false);
+
+  // ── Editor ref (for insertAtCursor from Scratchpad) ──
+  const editorRef = useRef<LyricEditorHandle>(null);
+
+  // ── Layout ref (for responsive ResizeObserver) ──
+  const layoutRef = useRef<HTMLDivElement>(null);
+
+  // ── Effects ──
+
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const handler = (e: MediaQueryListEvent) => setSystemDark(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+
+  useEffect(() => {
+    const el = layoutRef.current;
+    if (!el) return;
+    const obs = new ResizeObserver(([entry]) => {
+      if (entry.contentRect.width < 900) {
+        setSidebarOpen(false);
+        setRhymePanelOpen(false);
       }
     });
-  }
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
 
-  // ── All existing effects + handlers unchanged ──
   useEffect(() => {
     fetchNotes()
       .then((loaded) => {
@@ -60,17 +89,15 @@ export default function App() {
   useEffect(() => {
     const timer = setTimeout(() => {
       if (sidebarSearch.trim()) {
-        searchNotes(sidebarSearch)
-          .then(setNotes)
-          .catch(console.error);
+        searchNotes(sidebarSearch).then(setNotes).catch(console.error);
       } else {
-        fetchNotes()
-          .then((loaded) => setNotes(loaded))
-          .catch(console.error);
+        fetchNotes().then(setNotes).catch(console.error);
       }
     }, 300);
     return () => clearTimeout(timer);
   }, [sidebarSearch]);
+
+  // ── Handlers ──
 
   function handleSelectNote(id: number) {
     const note = notes.find((n) => n.id === id);
@@ -79,6 +106,7 @@ export default function App() {
     setActiveTitle(note.title);
     setActiveContent(note.content);
     setLastSaved(note.title, note.content);
+    setActiveColorGroups(null);
   }
 
   async function handleNewNote() {
@@ -89,6 +117,7 @@ export default function App() {
       setActiveTitle(note.title);
       setActiveContent(note.content);
       setLastSaved(note.title, note.content);
+      setActiveColorGroups(null);
     } catch (e) {
       console.error(e);
     }
@@ -122,12 +151,37 @@ export default function App() {
     }
   }
 
+  function handleColorGroupToggle(index: number) {
+    setActiveColorGroups((prev) => {
+      if (prev === null) return new Set([index]);
+      const next = new Set(prev);
+      if (next.has(index)) {
+        next.delete(index);
+        return next.size === 0 ? null : next;
+      }
+      next.add(index);
+      return next;
+    });
+  }
+
+  function addToScratchpad(word: string) {
+    setScratchpadWords((prev) => (prev.includes(word) ? prev : [...prev, word]));
+    setScratchpadOpen(true);
+  }
+
   const lineCount = activeContent
     ? activeContent.split("\n").filter((l) => l.trim().length > 0).length
     : 0;
 
+  const themeIcon =
+    themeMode === "dark" ? "☀" : themeMode === "light" ? "🖥" : "◑";
+
+  // Grid columns: sidebar | editor | rhyme panel (only in write tab)
+  const col3 = activeTab === "write" && rhymePanelOpen ? "360px" : "0";
+  const gridCols = `${sidebarOpen ? "280px" : "48px"} 1fr ${col3}`;
+
   return (
-    <div className={`app${theme === "dark" ? " theme-dark" : ""}`}>
+    <div className={`app${isDark ? " theme-dark" : ""}`}>
       {/* ── Topbar ── */}
       <header className="topbar">
         <div className="topbar-brand">
@@ -135,14 +189,31 @@ export default function App() {
         </div>
 
         <nav className="topbar-nav">
-          <button className="topbar-tab topbar-tab--active">Write</button>
-          {/* TODO: Library tab — no backend */}
-          <button className="topbar-tab" disabled style={{ opacity: 0.45, cursor: "default" }}>Library</button>
-          {/* TODO: Voice tab — no backend */}
-          <button className="topbar-tab" disabled style={{ opacity: 0.45, cursor: "default" }}>Voice</button>
+          <button
+            className={`topbar-tab${activeTab === "write" ? " topbar-tab--active" : ""}`}
+            onClick={() => setActiveTab("write")}
+          >Write</button>
+          <button
+            className={`topbar-tab${activeTab === "library" ? " topbar-tab--active" : ""}`}
+            onClick={() => setActiveTab("library")}
+          >Library</button>
+          <button
+            className={`topbar-tab${activeTab === "voice" ? " topbar-tab--active" : ""}`}
+            onClick={() => setActiveTab("voice")}
+          >Voice</button>
         </nav>
 
         <div className="topbar-controls">
+          {activeTab === "write" && !rhymePanelOpen && (
+            <button
+              className="theme-toggle"
+              style={{ width: "auto", borderRadius: "var(--r-sm)", padding: "0 8px", fontSize: 11 }}
+              onClick={() => setRhymePanelOpen(true)}
+              aria-label="Open rhyme panel"
+            >
+              ⊞ Rhymes
+            </button>
+          )}
           <div className="save-pill">
             {saveStatus === "saving" && (
               <><span className="save-dot saving" />Saving…</>
@@ -156,16 +227,25 @@ export default function App() {
           </div>
           <button
             className="theme-toggle"
-            onClick={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
-            aria-label="Toggle theme"
+            onClick={() =>
+              setThemeMode((m) =>
+                m === "light" ? "dark" : m === "dark" ? "auto" : "light"
+              )
+            }
+            title={`Theme: ${themeMode} — click to cycle`}
+            aria-label="Cycle theme"
           >
-            {theme === "dark" ? "☀" : "◑"}
+            {themeIcon}
           </button>
         </div>
       </header>
 
       {/* ── Three-column layout ── */}
-      <div className="layout" style={{ gridTemplateColumns: sidebarOpen ? "280px 1fr 360px" : "48px 1fr 360px" }}>
+      <div
+        className="layout"
+        ref={layoutRef}
+        style={{ gridTemplateColumns: gridCols }}
+      >
         <NotesSidebar
           notes={notes}
           activeNoteId={activeNoteId}
@@ -178,42 +258,74 @@ export default function App() {
           onSearchChange={setSidebarSearch}
           activeColorGroups={activeColorGroups}
           onColorGroupToggle={handleColorGroupToggle}
+          activeGroups={activeGroups}
         />
 
         <main className="editor-pane">
-          {activeNoteId === null ? (
-            <div className="editor-empty">Select a note or create a new one</div>
-          ) : (
+          {activeTab === "write" && (
             <>
-              <div className="editor-header">
-                <input
-                  className="lyric-title"
-                  placeholder="Untitled"
-                  value={activeTitle}
-                  onChange={(e) => handleTitleChange(e.target.value)}
-                />
-                <div className="editor-meta">
-                  draft · {lineCount} {lineCount === 1 ? "line" : "lines"}
-                </div>
-              </div>
-              <LyricEditor
-                content={activeContent}
-                onContentChange={setActiveContent}
-                onSelectionChange={(q) => { if (!autoMode) setRhymeQuery(q); }}
-                onCursorChange={(q) => { if (autoMode) setRhymeQuery(q); }}
-                isDarkTheme={theme === "dark"}
-                activeColorGroups={activeColorGroups}
-              />
+              {activeNoteId === null ? (
+                <div className="editor-empty">Select a note or create a new one</div>
+              ) : (
+                <>
+                  <div className="editor-header">
+                    <input
+                      className="lyric-title"
+                      placeholder="Untitled"
+                      value={activeTitle}
+                      onChange={(e) => handleTitleChange(e.target.value)}
+                    />
+                    <div className="editor-meta">
+                      draft · {lineCount} {lineCount === 1 ? "line" : "lines"}
+                    </div>
+                  </div>
+                  <LyricEditor
+                    ref={editorRef}
+                    content={activeContent}
+                    onContentChange={setActiveContent}
+                    onSelectionChange={(q) => { if (!autoMode) setRhymeQuery(q); }}
+                    onCursorChange={(q) => { if (autoMode) setRhymeQuery(q); }}
+                    isDarkTheme={isDark}
+                    activeColorGroups={activeColorGroups}
+                    onGroupsChange={setActiveGroups}
+                  />
+                </>
+              )}
             </>
+          )}
+
+          {activeTab === "library" && (
+            <LibraryPanel
+              onSearchSelect={(q) => {
+                setRhymeQuery(q);
+                setActiveTab("write");
+                setRhymePanelOpen(true);
+              }}
+            />
+          )}
+
+          {activeTab === "voice" && (
+            <VoicePanel
+              onTextReady={(text) => {
+                setActiveContent((c) =>
+                  c + (c.endsWith("\n") || c === "" ? "" : "\n") + text
+                );
+                setActiveTab("write");
+              }}
+            />
           )}
         </main>
 
-        <RhymeDictionary
-          query={rhymeQuery}
-          onQueryChange={setRhymeQuery}
-          autoMode={autoMode}
-          onAutoModeToggle={() => setAutoMode((o) => !o)}
-        />
+        {activeTab === "write" && rhymePanelOpen && (
+          <RhymeDictionary
+            query={rhymeQuery}
+            onQueryChange={setRhymeQuery}
+            autoMode={autoMode}
+            onAutoModeToggle={() => setAutoMode((o) => !o)}
+            onCollapse={() => setRhymePanelOpen(false)}
+            onPin={(word) => addToScratchpad(word)}
+          />
+        )}
       </div>
 
       {/* ── Status bar ── */}
@@ -221,6 +333,20 @@ export default function App() {
         <span>en-US · CMU + pyphen · Auto-save 1s</span>
         <span>build 2026.05</span>
       </footer>
+
+      {/* ── Scratchpad overlay ── */}
+      {scratchpadOpen && (
+        <Scratchpad
+          words={scratchpadWords}
+          onRemove={(word) =>
+            setScratchpadWords((prev) => prev.filter((w) => w !== word))
+          }
+          onClose={() => setScratchpadOpen(false)}
+          onInsert={(word) => {
+            editorRef.current?.insertAtCursor(word);
+          }}
+        />
+      )}
     </div>
   );
 }
