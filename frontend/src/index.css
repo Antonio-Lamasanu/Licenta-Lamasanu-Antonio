@@ -560,6 +560,10 @@ html, body, #root {
   min-width: 0;
 }
 
+.lyric-body--phonemes {
+  overflow: visible;
+}
+
 .lyric-mirror {
   position: absolute;
   inset: 0;
@@ -1024,4 +1028,28 @@ html, body, #root {
 /* ─── Wave 2: legend chip dim state ─── */
 .legend-chip--dim {
   opacity: 0.25;
+}
+
+/* ─── Stress mode legend ─── */
+.stress-legend {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--ink-3);
+}
+
+.stress-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.stress-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex-shrink: 0;
 }
