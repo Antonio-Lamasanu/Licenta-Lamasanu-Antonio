@@ -1,11 +1,6 @@
-import { useState, useEffect, useRef, useCallback, forwardRef, useImperativeHandle } from "react";
+import { useState, useEffect, useRef, useCallback, forwardRef, useImperativeHandle, useMemo } from "react";
 import { fetchAnalysis, type SyllableInfo, type ActiveGroup } from "../api/syllables";
-import {
-  RHYME_COLORS,
-  RHYME_COLORS_DARK,
-  RHYME_COLORS_SLANT,
-  RHYME_COLORS_SLANT_DARK,
-} from "../phonemeColors";
+import { phonemeToColorIndex, getPhonemeColor, getSlantColor } from "../utils/phonemeColors";
 
 const DEBOUNCE_MS = 400;
 
