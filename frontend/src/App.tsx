@@ -17,7 +17,6 @@ import {
   deleteChatSession,
   fetchChatTurns,
   postChatTurn,
-  type ChatMode,
   type ChatSession,
   type ChatTurn,
 } from "./api/chat";
@@ -53,6 +52,7 @@ export default function App({ user, onLogout, justRegistered }: AppProps) {
   const [activeNoteId, setActiveNoteId] = useState<number | null>(null);
   const [activeTitle, setActiveTitle] = useState("");
   const [activeContent, setActiveContent] = useState("");
+  const titleIsManual = useRef(false);
   const { saveStatus, setLastSaved } = useAutoSave(activeNoteId, activeTitle, activeContent);
 
   // ── Theme: 3-state light / dark / auto ──
@@ -128,6 +128,7 @@ export default function App({ user, onLogout, justRegistered }: AppProps) {
           setActiveTitle(first.title);
           setActiveContent(first.content);
           setLastSaved(first.title, first.content);
+          titleIsManual.current = first.title.trim() !== "";
         }
       })
       .catch(console.error);
@@ -181,6 +182,7 @@ export default function App({ user, onLogout, justRegistered }: AppProps) {
     setActiveContent(note.content);
     setLastSaved(note.title, note.content);
     setActiveColorGroups(null);
+    titleIsManual.current = note.title.trim() !== "";
   }
 
   async function handleNewNote() {
@@ -192,6 +194,7 @@ export default function App({ user, onLogout, justRegistered }: AppProps) {
       setActiveContent(note.content);
       setLastSaved(note.title, note.content);
       setActiveColorGroups(null);
+      titleIsManual.current = false;
     } catch (e) {
       console.error(e);
     }
@@ -222,14 +225,35 @@ export default function App({ user, onLogout, justRegistered }: AppProps) {
     try {
       await updateNote(id, title, note.content);
       setNotes((prev) => prev.map((n) => (n.id === id ? { ...n, title } : n)));
-      if (activeNoteId === id) setActiveTitle(title);
+      if (activeNoteId === id) {
+        setActiveTitle(title);
+        titleIsManual.current = title.trim() !== "";
+      }
     } catch (e) {
       console.error(e);
     }
   }
 
+  function handleContentChange(content: string) {
+    setActiveContent(content);
+    if (!titleIsManual.current) {
+      const firstLine = content.split("\n").find((l) => l.trim().length > 0) ?? "";
+      const words = firstLine.trim().split(/\s+/).filter(Boolean);
+      const autoTitle = words.length
+        ? words.slice(0, 6).join(" ") + (words.length > 6 ? "…" : "")
+        : "";
+      setActiveTitle(autoTitle);
+      if (activeNoteId !== null) {
+        setNotes((prev) =>
+          prev.map((n) => (n.id === activeNoteId ? { ...n, title: autoTitle } : n))
+        );
+      }
+    }
+  }
+
   function handleTitleChange(title: string) {
     setActiveTitle(title);
+    titleIsManual.current = title.trim() !== "";
     if (activeNoteId !== null) {
       setNotes((prev) =>
         prev.map((n) => (n.id === activeNoteId ? { ...n, title } : n))
@@ -271,9 +295,9 @@ export default function App({ user, onLogout, justRegistered }: AppProps) {
     unpinScratchpadWord(word).catch(console.error);
   }
 
-  async function handleNewChatSession(mode: ChatMode) {
+  async function handleNewChatSession() {
     try {
-      const session = await createChatSession(mode);
+      const session = await createChatSession();
       setChatSessions((prev) => [session, ...prev]);
       setActiveChatSessionId(session.id);
       setActiveTab("chat");
@@ -301,6 +325,12 @@ export default function App({ user, onLogout, justRegistered }: AppProps) {
     try {
       const pair = await postChatTurn(activeChatSessionId, content);
       setChatTurns((prev) => [...prev, pair.user_turn, pair.assistant_turn]);
+      if (pair.session_title) {
+        const title = pair.session_title;
+        setChatSessions((prev) =>
+          prev.map((s) => (s.id === activeChatSessionId ? { ...s, title } : s))
+        );
+      }
     } catch (e) {
       setChatError(e instanceof Error ? e.message : "Failed to send message");
     } finally {
@@ -450,7 +480,7 @@ export default function App({ user, onLogout, justRegistered }: AppProps) {
                   <LyricEditor
                     ref={editorRef}
                     content={activeContent}
-                    onContentChange={setActiveContent}
+                    onContentChange={handleContentChange}
                     onSelectionChange={(q) => { if (!autoMode) setRhymeQuery(q); }}
                     onCursorChange={(q) => { if (autoMode) setRhymeQuery(q); }}
                     isDarkTheme={isDark}

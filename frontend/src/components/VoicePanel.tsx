@@ -1,41 +1,8 @@
 import { useState, useEffect, useRef } from "react";
+import type { SpeechRecognitionEvent, SpeechRecognitionInstance } from "../types/speechRecognition";
 
 interface VoicePanelProps {
   onTextReady: (text: string) => void;
-}
-
-interface SpeechRecognitionEvent extends Event {
-  results: SpeechRecognitionResultList;
-}
-interface SpeechRecognitionResultList {
-  readonly length: number;
-  item(index: number): SpeechRecognitionResult;
-  [index: number]: SpeechRecognitionResult;
-}
-interface SpeechRecognitionResult {
-  readonly isFinal: boolean;
-  [index: number]: SpeechRecognitionAlternative;
-}
-interface SpeechRecognitionAlternative {
-  transcript: string;
-  confidence: number;
-}
-
-declare global {
-  interface Window {
-    SpeechRecognition?: new () => SpeechRecognition;
-    webkitSpeechRecognition?: new () => SpeechRecognition;
-  }
-  interface SpeechRecognition extends EventTarget {
-    continuous: boolean;
-    interimResults: boolean;
-    lang: string;
-    start(): void;
-    stop(): void;
-    onresult: ((event: SpeechRecognitionEvent) => void) | null;
-    onerror: ((event: Event) => void) | null;
-    onend: (() => void) | null;
-  }
 }
 
 const SpeechRecognitionClass =
@@ -47,7 +14,7 @@ export default function VoicePanel({ onTextReady }: VoicePanelProps) {
   const [interimText, setInterimText] = useState("");
   const [finalLines, setFinalLines] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
 
   useEffect(() => {
     return () => { recognitionRef.current?.stop(); };

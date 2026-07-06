@@ -1,11 +1,9 @@
 import { apiFetch } from "./client";
 
-export type ChatMode = "brainstorm" | "write" | "discovery" | "refine";
-
 export interface ChatSession {
   id: number;
   note_id: number | null;
-  mode: ChatMode;
+  title: string | null;
   created_at: string;
 }
 
@@ -20,6 +18,7 @@ export interface ChatTurn {
 export interface ChatTurnPair {
   user_turn: ChatTurn;
   assistant_turn: ChatTurn;
+  session_title: string | null;
 }
 
 export interface UserProfile {
@@ -45,11 +44,11 @@ export async function fetchChatSessions(): Promise<ChatSession[]> {
   return res.json() as Promise<ChatSession[]>;
 }
 
-export async function createChatSession(mode: ChatMode, noteId?: number | null): Promise<ChatSession> {
+export async function createChatSession(noteId?: number | null): Promise<ChatSession> {
   const res = await apiFetch(`/api/chat-sessions`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ mode, note_id: noteId ?? null }),
+    body: JSON.stringify({ note_id: noteId ?? null }),
   });
   if (!res.ok) return extractError(res, `Chat sessions API error: ${res.status}`);
   return res.json() as Promise<ChatSession>;

@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import type { ChatSession, ChatTurn } from "../api/chat";
-import { CHAT_MODE_META } from "../utils/chatModes";
+import { CHAT_CATEGORIES } from "../utils/chatModes";
+import { useSpeechToText } from "../hooks/useSpeechToText";
 
 interface ChatPanelProps {
   session: ChatSession | null;
@@ -13,8 +16,6 @@ interface ChatPanelProps {
   injectText: { text: string; seq: number } | null;
 }
 
-const PROMPT_SHORTCUTS = ["Suggest a rhyme scheme for this", "Give me an idea", "Help me finish this"];
-
 export default function ChatPanel({
   session,
   turns,
@@ -26,15 +27,22 @@ export default function ChatPanel({
   injectText,
 }: ChatPanelProps) {
   const [draft, setDraft] = useState("");
+  const [openCategory, setOpenCategory] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const threadRef = useRef<HTMLDivElement>(null);
   const lastInjectSeq = useRef<number | null>(null);
 
+  function appendToDraft(text: string) {
+    setDraft((prev) => (prev ? prev.trimEnd() + "\n\n" + text : text));
+    textareaRef.current?.focus();
+  }
+
+  const speech = useSpeechToText(appendToDraft);
+
   useEffect(() => {
     if (injectText && injectText.seq !== lastInjectSeq.current) {
       lastInjectSeq.current = injectText.seq;
-      setDraft((prev) => (prev ? prev.trimEnd() + "\n\n" + injectText.text : injectText.text));
-      textareaRef.current?.focus();
+      appendToDraft(injectText.text);
     }
   }, [injectText]);
 
@@ -47,6 +55,7 @@ export default function ChatPanel({
     if (!content || sending || !session) return;
     onSend(content);
     setDraft("");
+    setOpenCategory(null);
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
@@ -58,8 +67,7 @@ export default function ChatPanel({
 
   function insertNote() {
     if (!activeNoteContent) return;
-    setDraft((prev) => (prev ? prev.trimEnd() + "\n\n" + activeNoteContent : activeNoteContent));
-    textareaRef.current?.focus();
+    appendToDraft(activeNoteContent);
   }
 
   if (!session) {
@@ -70,27 +78,99 @@ export default function ChatPanel({
     );
   }
 
-  const meta = CHAT_MODE_META[session.mode];
+  const isEmpty = !loadingTurns && turns.length === 0 && !sending;
+
+  const categoryRow = (
+    <div className="chat-shortcuts">
+      {CHAT_CATEGORIES.map((cat) => (
+        <div key={cat.id} className="chat-category">
+          <button
+            className={`chat-shortcut-btn chat-category-btn${openCategory === cat.id ? " chat-category-btn--open" : ""}`}
+            onClick={() => setOpenCategory((prev) => (prev === cat.id ? null : cat.id))}
+          >
+            <span aria-hidden="true">{cat.icon}</span> {cat.label}
+          </button>
+          {openCategory === cat.id && (
+            <div className="chat-category-dropdown">
+              {cat.starters.map((starter) => (
+                <button
+                  key={starter}
+                  className="chat-category-option"
+                  onClick={() => {
+                    setDraft(starter);
+                    setOpenCategory(null);
+                    textareaRef.current?.focus();
+                  }}
+                >
+                  {starter}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      ))}
+      <button
+        className="chat-shortcut-btn chat-shortcut-btn--insert"
+        onClick={insertNote}
+        disabled={!activeNoteContent}
+        title={activeNoteContent ? "Paste the current note into the message box" : "No active note"}
+      >
+        Insert full note
+      </button>
+    </div>
+  );
+
+  const composer = (
+    <div className="chat-composer">
+      <textarea
+        ref={textareaRef}
+        className="chat-composer-input"
+        placeholder="Write a message… (Enter to send, Shift+Enter for a new line)"
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={handleKeyDown}
+        rows={isEmpty ? 2 : 3}
+      />
+      {speech.supported && (
+        <button
+          className={`chat-mic-btn${speech.listening ? " chat-mic-btn--active" : ""}`}
+          onClick={speech.toggle}
+          title={speech.listening ? "Stop voice input" : "Voice input"}
+          aria-label="Toggle voice input"
+          type="button"
+        >
+          🎤
+        </button>
+      )}
+      <button className="chat-composer-send" onClick={handleSend} disabled={sending || !draft.trim()}>
+        {sending ? "…" : "Send"}
+      </button>
+    </div>
+  );
+
+  if (isEmpty) {
+    return (
+      <div className="chat-panel chat-panel--centered">
+        <div className="chat-center-wrap">
+          <div className="chat-empty">Say hello to get started.</div>
+          {composer}
+          {categoryRow}
+        </div>
+        {error && <div className="chat-error">{error}</div>}
+      </div>
+    );
+  }
 
   return (
     <div className="chat-panel">
-      <div className="chat-panel-header">
-        <span className="chat-panel-mode-icon" aria-hidden="true">{meta?.icon}</span>
-        <div className="chat-panel-mode-text">
-          <span className="chat-panel-mode-label">{meta?.label ?? session.mode}</span>
-          <span className="chat-panel-mode-desc">{meta?.description}</span>
-        </div>
-      </div>
-
       <div className="chat-thread" ref={threadRef}>
         {loadingTurns && <div className="chat-loading">Loading…</div>}
-        {!loadingTurns && turns.length === 0 && (
-          <div className="chat-empty">Say hello to get started.</div>
-        )}
         {turns.map((t) => (
           <div key={t.id} className={`chat-bubble chat-bubble--${t.role}`}>
             <div className="chat-bubble-role">{t.role === "user" ? "You" : "Rhymathic"}</div>
-            <div className="chat-bubble-content">{t.content}</div>
+            <div className="chat-bubble-content">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{t.content}</ReactMarkdown>
+            </div>
           </div>
         ))}
         {sending && (
@@ -107,36 +187,8 @@ export default function ChatPanel({
 
       {error && <div className="chat-error">{error}</div>}
 
-      <div className="chat-shortcuts">
-        {PROMPT_SHORTCUTS.map((p) => (
-          <button key={p} className="chat-shortcut-btn" onClick={() => setDraft(p)}>
-            {p}
-          </button>
-        ))}
-        <button
-          className="chat-shortcut-btn chat-shortcut-btn--insert"
-          onClick={insertNote}
-          disabled={!activeNoteContent}
-          title={activeNoteContent ? "Paste the current note into the message box" : "No active note"}
-        >
-          Insert full note
-        </button>
-      </div>
-
-      <div className="chat-composer">
-        <textarea
-          ref={textareaRef}
-          className="chat-composer-input"
-          placeholder="Write a message… (Enter to send, Shift+Enter for a new line)"
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={handleKeyDown}
-          rows={3}
-        />
-        <button className="chat-composer-send" onClick={handleSend} disabled={sending || !draft.trim()}>
-          {sending ? "…" : "Send"}
-        </button>
-      </div>
+      {categoryRow}
+      {composer}
     </div>
   );
 }

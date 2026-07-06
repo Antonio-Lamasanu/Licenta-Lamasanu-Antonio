@@ -175,10 +175,8 @@ def init_db():
             created_at TIMESTAMPTZ NOT NULL DEFAULT now()
         )
     """)
-    conn.execute(
-        "ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS mode TEXT NOT NULL "
-        "DEFAULT 'write' CHECK (mode IN ('brainstorm', 'write', 'discovery', 'refine'))"
-    )
+    conn.execute("ALTER TABLE chat_sessions DROP COLUMN IF EXISTS mode")
+    conn.execute("ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS title TEXT")
     conn.execute("""
         CREATE TABLE IF NOT EXISTS chat_turns (
             id         SERIAL PRIMARY KEY,
@@ -427,18 +425,14 @@ class ScratchpadWordOut(BaseModel):
 
 # --- Chat models ---
 
-CHAT_MODES = ("brainstorm", "write", "discovery", "refine")
-
-
 class ChatSessionCreate(BaseModel):
     note_id: int | None = None
-    mode: str = "write"
 
 
 class ChatSessionOut(BaseModel):
     id: int
     note_id: int | None
-    mode: str
+    title: str | None
     created_at: datetime
 
 
@@ -457,6 +451,7 @@ class ChatTurnCreate(BaseModel):
 class ChatTurnPairOut(BaseModel):
     user_turn: ChatTurnOut
     assistant_turn: ChatTurnOut
+    session_title: str | None = None
 
 
 # --- User profile models ---
@@ -1200,7 +1195,7 @@ def unpin_scratchpad_word(word: str, current_user: dict = Depends(get_current_us
 def list_chat_sessions(current_user: dict = Depends(get_current_user)):
     for conn in get_db():
         rows = conn.execute(
-            "SELECT id, note_id, mode, created_at FROM chat_sessions WHERE user_id = %s ORDER BY created_at DESC",
+            "SELECT id, note_id, title, created_at FROM chat_sessions WHERE user_id = %s ORDER BY created_at DESC",
             (current_user["id"],),
         ).fetchall()
         return [ChatSessionOut(**row) for row in rows]
@@ -1208,8 +1203,6 @@ def list_chat_sessions(current_user: dict = Depends(get_current_user)):
 
 @app.post("/api/chat-sessions", response_model=ChatSessionOut, status_code=status.HTTP_201_CREATED)
 def create_chat_session(body: ChatSessionCreate, current_user: dict = Depends(get_current_user)):
-    if body.mode not in CHAT_MODES:
-        raise HTTPException(status_code=400, detail=f"mode must be one of {CHAT_MODES}")
     for conn in get_db():
         if body.note_id is not None:
             owned = conn.execute(
@@ -1219,10 +1212,10 @@ def create_chat_session(body: ChatSessionCreate, current_user: dict = Depends(ge
             if not owned:
                 raise HTTPException(status_code=404, detail="Note not found")
         row = conn.execute(
-            """INSERT INTO chat_sessions (user_id, note_id, mode)
-               VALUES (%s, %s, %s)
-               RETURNING id, note_id, mode, created_at""",
-            (current_user["id"], body.note_id, body.mode),
+            """INSERT INTO chat_sessions (user_id, note_id)
+               VALUES (%s, %s)
+               RETURNING id, note_id, title, created_at""",
+            (current_user["id"], body.note_id),
         ).fetchone()
         conn.commit()
         return ChatSessionOut(**row)
@@ -1260,31 +1253,11 @@ def list_chat_turns(session_id: int, current_user: dict = Depends(get_current_us
 
 # --- Mistral integration ---
 
-_MODE_PROMPTS: dict[str, str] = {
-    "brainstorm": (
-        "Free-flowing creative conversation. Throw out many ideas, metaphors, and "
-        "directions. Use this style when the user is starting fresh or needs inspiration."
-    ),
-    "write": (
-        "Focused lyric writing. Help develop verses, choruses, and bridges. Use this "
-        "style when the user knows what they want and needs help writing it."
-    ),
-    "discovery": (
-        "Guided discovery through questions. Ask questions to help the user find their "
-        "own voice rather than writing for them. Use this style when the user is stuck "
-        "or wants to dig deeper into meaning."
-    ),
-    "refine": (
-        "Polish and improve existing lyrics - rhythm, word choice, flow. Use this style "
-        "when the user has lyrics that need fine-tuning."
-    ),
-}
-
 _BASE_SYSTEM_PROMPT = (
     "You are a songwriting and poetry assistant. Help the user write lyrics, verses, "
     "and poetry in any genre or style. If asked to write code, functions, or "
     "technical/programming content, decline and steer back to lyrics - even a song "
-    "about coding should stay in lyric form, not actual code."
+    "about coding should stay in lyric form, not actual code and so on."
 )
 
 
@@ -1311,12 +1284,18 @@ def _profile_summary(profile: dict | None) -> str | None:
     return "About this user: " + "; ".join(clauses) + "."
 
 
-def _build_system_prompt(mode: str, profile: dict | None) -> str:
-    parts = [_BASE_SYSTEM_PROMPT, _MODE_PROMPTS[mode]]
+def _build_system_prompt(profile: dict | None) -> str:
+    parts = [_BASE_SYSTEM_PROMPT]
     summary = _profile_summary(profile)
     if summary:
         parts.append(summary)
     return "\n\n".join(parts)
+
+
+def _auto_title(text: str, max_words: int = 6) -> str:
+    words = text.split()
+    title = " ".join(words[:max_words])
+    return title + "…" if len(words) > max_words else title
 
 
 def _call_mistral(messages: list[dict]) -> str:
@@ -1352,7 +1331,7 @@ def create_chat_turn(session_id: int, body: ChatTurnCreate, current_user: dict =
 
     for conn in get_db():
         session = conn.execute(
-            "SELECT id, mode FROM chat_sessions WHERE id = %s AND user_id = %s",
+            "SELECT id, title FROM chat_sessions WHERE id = %s AND user_id = %s",
             (session_id, current_user["id"]),
         ).fetchone()
         if not session:
@@ -1370,7 +1349,7 @@ def create_chat_turn(session_id: int, body: ChatTurnCreate, current_user: dict =
             (current_user["id"],),
         ).fetchone()
 
-        system_prompt = _build_system_prompt(session["mode"], profile)
+        system_prompt = _build_system_prompt(profile)
         messages = [{"role": "system", "content": system_prompt}]
         messages.extend({"role": h["role"], "content": h["content"]} for h in history)
         messages.append({"role": "user", "content": content})
@@ -1382,6 +1361,15 @@ def create_chat_turn(session_id: int, body: ChatTurnCreate, current_user: dict =
             (session_id, content),
         ).fetchone()
         conn.commit()
+
+        session_title = None
+        if not history and not session["title"]:
+            session_title = _auto_title(content)
+            conn.execute(
+                "UPDATE chat_sessions SET title = %s WHERE id = %s",
+                (session_title, session_id),
+            )
+            conn.commit()
 
         reply = _call_mistral(messages)
 
@@ -1396,6 +1384,7 @@ def create_chat_turn(session_id: int, body: ChatTurnCreate, current_user: dict =
         return ChatTurnPairOut(
             user_turn=ChatTurnOut(**user_row),
             assistant_turn=ChatTurnOut(**assistant_row),
+            session_title=session_title,
         )
 
 

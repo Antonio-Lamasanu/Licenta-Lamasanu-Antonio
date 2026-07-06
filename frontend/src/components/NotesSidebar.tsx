@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { Note } from "../types/note";
 import type { ActiveGroup } from "../api/syllables";
-import type { ChatMode, ChatSession } from "../api/chat";
+import type { ChatSession } from "../api/chat";
 import { getPhonemeColor, getSlantColor } from "../utils/phonemeColors";
 import ResizableSplit from "./ResizableSplit";
 import ChatSessionsPanel from "./ChatSessionsPanel";
@@ -25,7 +25,7 @@ interface NotesSidebarProps {
   chatSessions: ChatSession[];
   activeChatSessionId: number | null;
   onSelectChatSession: (id: number) => void;
-  onNewChatSession: (mode: ChatMode) => void;
+  onNewChatSession: () => void;
   onDeleteChatSession: (id: number) => void;
 }
 
@@ -192,37 +192,6 @@ export default function NotesSidebar({
                   </div>
                 ))}
               </div>
-
-              {activeGroups.length > 0 && (
-                <div className="sidebar-legend">
-                  {activeGroups.map((group) => {
-                    const palette = group.isSlant
-                      ? getSlantColor(group.phonemeKey, isDarkTheme)
-                      : getPhonemeColor(group.phonemeKey, isDarkTheme);
-                    const isActive =
-                      activeColorGroups === null || activeColorGroups.has(group.colorIndex);
-                    return (
-                      <div
-                        key={`${group.colorIndex}-${group.isSlant}`}
-                        className={`legend-chip${isActive ? "" : " legend-chip--dim"}`}
-                        style={{ background: palette.bg, cursor: "pointer" }}
-                        title={`${group.isSlant ? "Slant rhyme" : "Rhyme"}: ${group.phonemeKey}`}
-                        onClick={() => onColorGroupToggle(group.colorIndex)}
-                      >
-                        <span className="legend-chip-label">{group.phonemeKey}</span>
-                      </div>
-                    );
-                  })}
-
-                  {/* Select/deselect-all chip — last */}
-                  <div
-                    className={`legend-chip legend-chip--all${activeColorGroups === null ? " legend-chip--all-active" : ""}`}
-                    onClick={onSelectAll}
-                    title={activeColorGroups === null ? "Deselect all" : "Select all"}
-                    style={{ cursor: "pointer" }}
-                  />
-                </div>
-              )}
             </div>
           }
           bottom={
@@ -235,6 +204,37 @@ export default function NotesSidebar({
             />
           }
         />
+      )}
+
+      {isOpen && activeGroups.length > 0 && (
+        <div className="sidebar-legend">
+          {activeGroups.map((group) => {
+            const palette = group.isSlant
+              ? getSlantColor(group.phonemeKey, isDarkTheme)
+              : getPhonemeColor(group.phonemeKey, isDarkTheme);
+            const isActive =
+              activeColorGroups === null || activeColorGroups.has(group.colorIndex);
+            return (
+              <div
+                key={`${group.colorIndex}-${group.isSlant}`}
+                className={`legend-chip${isActive ? "" : " legend-chip--dim"}`}
+                style={{ background: palette.bg, cursor: "pointer" }}
+                title={`${group.isSlant ? "Slant rhyme" : "Rhyme"}: ${group.phonemeKey}`}
+                onClick={() => onColorGroupToggle(group.colorIndex)}
+              >
+                <span className="legend-chip-label">{group.phonemeKey}</span>
+              </div>
+            );
+          })}
+
+          {/* Select/deselect-all chip — last */}
+          <div
+            className={`legend-chip legend-chip--all${activeColorGroups === null ? " legend-chip--all-active" : ""}`}
+            onClick={onSelectAll}
+            title={activeColorGroups === null ? "Deselect all" : "Select all"}
+            style={{ cursor: "pointer" }}
+          />
+        </div>
       )}
     </div>
   );

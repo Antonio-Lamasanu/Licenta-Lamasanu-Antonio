@@ -18,8 +18,8 @@ Thumbs.db
 
 # Claude
 CLAUDE.md
-CLAUDE.md
 .claudeignore
+.claude/
 
 # IDE
 .vscode/
@@ -37,6 +37,3 @@ backend/.coverage
 # Build artifacts
 frontend/build/
 *.egg-info/
-.claude/
-.claude
-.claude/*

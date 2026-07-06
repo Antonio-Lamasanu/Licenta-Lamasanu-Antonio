@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, forwardRef, useImperativeHandle, useMemo, useLayoutEffect } from "react";
 import { fetchAnalysis, type SyllableInfo, type ActiveGroup } from "../api/syllables";
 import { phonemeToColorIndex, getPhonemeColor, getSlantColor } from "../utils/phonemeColors";
+import type { SpeechRecognitionEvent, SpeechRecognitionInstance } from "../types/speechRecognition";
 
 const DEBOUNCE_MS = 400;
 
@@ -38,41 +39,8 @@ interface LyricEditorProps {
   onSearchRhymes?: (text: string) => void;
 }
 
-// ── SpeechRecognition types ────────────────────────────────────────────────
-interface SpeechRecognitionEvent extends Event {
-  resultIndex: number;
-  results: SpeechRecognitionResultList;
-}
-interface SpeechRecognitionResultList {
-  readonly length: number;
-  [index: number]: SpeechRecognitionResult;
-}
-interface SpeechRecognitionResult {
-  readonly isFinal: boolean;
-  [index: number]: SpeechRecognitionAlternative;
-}
-interface SpeechRecognitionAlternative {
-  transcript: string;
-}
-declare global {
-  interface Window {
-    SpeechRecognition?: new () => SpeechRecognitionInstance;
-    webkitSpeechRecognition?: new () => SpeechRecognitionInstance;
-  }
-  interface SpeechRecognitionInstance extends EventTarget {
-    continuous: boolean;
-    interimResults: boolean;
-    lang: string;
-    start(): void;
-    stop(): void;
-    onresult: ((event: SpeechRecognitionEvent) => void) | null;
-    onerror: ((event: Event) => void) | null;
-    onend: (() => void) | null;
-  }
-}
 const SpeechRecognitionClass =
   (typeof window !== "undefined" && (window.SpeechRecognition ?? window.webkitSpeechRecognition)) || null;
-// ──────────────────────────────────────────────────────────────────────────
 
 function MicIcon() {
   return (
