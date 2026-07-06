@@ -1,7 +1,7 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, status, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import Response
+from fastapi.responses import Response, StreamingResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 import cmudict
@@ -12,6 +12,7 @@ from english_words import get_english_words_set
 import psycopg
 from psycopg.rows import dict_row
 from itertools import combinations
+import json
 import logging
 import os
 from datetime import datetime, timezone, timedelta
@@ -446,12 +447,6 @@ class ChatTurnOut(BaseModel):
 
 class ChatTurnCreate(BaseModel):
     content: str
-
-
-class ChatTurnPairOut(BaseModel):
-    user_turn: ChatTurnOut
-    assistant_turn: ChatTurnOut
-    session_title: str | None = None
 
 
 # --- User profile models ---
@@ -1298,32 +1293,11 @@ def _auto_title(text: str, max_words: int = 6) -> str:
     return title + "…" if len(words) > max_words else title
 
 
-def _call_mistral(messages: list[dict]) -> str:
-    if not MISTRAL_API_KEY:
-        raise HTTPException(status_code=500, detail="MISTRAL_API_KEY not configured")
-    try:
-        resp = requests.post(
-            MISTRAL_CHAT_URL,
-            headers={
-                "Authorization": f"Bearer {MISTRAL_API_KEY}",
-                "Content-Type": "application/json",
-            },
-            json={"model": MISTRAL_MODEL, "messages": messages},
-            timeout=30,
-        )
-        resp.raise_for_status()
-        data = resp.json()
-        return data["choices"][0]["message"]["content"]
-    except requests.RequestException as exc:
-        logger.warning("mistral call failed: %r", exc)
-        raise HTTPException(status_code=502, detail="Failed to reach Mistral API") from exc
+def _sse(event: str, data: dict) -> str:
+    return f"event: {event}\ndata: {json.dumps(data, default=str)}\n\n"
 
 
-@app.post(
-    "/api/chat-sessions/{session_id}/turns",
-    response_model=ChatTurnPairOut,
-    status_code=status.HTTP_201_CREATED,
-)
+@app.post("/api/chat-sessions/{session_id}/turns")
 def create_chat_turn(session_id: int, body: ChatTurnCreate, current_user: dict = Depends(get_current_user)):
     content = body.content.strip()
     if not content:
@@ -1371,21 +1345,64 @@ def create_chat_turn(session_id: int, body: ChatTurnCreate, current_user: dict =
             )
             conn.commit()
 
-        reply = _call_mistral(messages)
+        if not MISTRAL_API_KEY:
+            raise HTTPException(status_code=500, detail="MISTRAL_API_KEY not configured")
 
-        assistant_row = conn.execute(
-            """INSERT INTO chat_turns (session_id, role, content)
-               VALUES (%s, 'assistant', %s)
-               RETURNING id, session_id, role, content, created_at""",
-            (session_id, reply),
-        ).fetchone()
-        conn.commit()
+        try:
+            mistral_resp = requests.post(
+                MISTRAL_CHAT_URL,
+                headers={
+                    "Authorization": f"Bearer {MISTRAL_API_KEY}",
+                    "Content-Type": "application/json",
+                },
+                json={"model": MISTRAL_MODEL, "messages": messages, "stream": True},
+                stream=True,
+                timeout=60,
+            )
+            mistral_resp.raise_for_status()
+        except requests.RequestException as exc:
+            logger.warning("mistral call failed: %r", exc)
+            raise HTTPException(status_code=502, detail="Failed to reach Mistral API") from exc
 
-        return ChatTurnPairOut(
-            user_turn=ChatTurnOut(**user_row),
-            assistant_turn=ChatTurnOut(**assistant_row),
-            session_title=session_title,
-        )
+        def event_stream():
+            yield _sse("user_turn", dict(user_row))
+
+            full_text_parts: list[str] = []
+            try:
+                for line in mistral_resp.iter_lines(decode_unicode=True):
+                    if not line or not line.startswith("data:"):
+                        continue
+                    payload = line[len("data:"):].strip()
+                    if payload == "[DONE]":
+                        break
+                    chunk = json.loads(payload)
+                    delta = chunk["choices"][0]["delta"].get("content")
+                    if delta:
+                        full_text_parts.append(delta)
+                        yield _sse("delta", {"text": delta})
+            except requests.RequestException as exc:
+                logger.warning("mistral stream failed: %r", exc)
+                yield _sse("error", {"detail": "Failed to reach Mistral API"})
+                return
+            finally:
+                mistral_resp.close()
+
+            reply = "".join(full_text_parts)
+            for save_conn in get_db():
+                assistant_row = save_conn.execute(
+                    """INSERT INTO chat_turns (session_id, role, content)
+                       VALUES (%s, 'assistant', %s)
+                       RETURNING id, session_id, role, content, created_at""",
+                    (session_id, reply),
+                ).fetchone()
+                save_conn.commit()
+
+            yield _sse("done", {
+                "assistant_turn": dict(assistant_row),
+                "session_title": session_title,
+            })
+
+        return StreamingResponse(event_stream(), media_type="text/event-stream")
 
 
 # --- User profile endpoints ---

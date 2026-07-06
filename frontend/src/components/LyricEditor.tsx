@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback, forwardRef, useImperativeHand
 import { fetchAnalysis, type SyllableInfo, type ActiveGroup } from "../api/syllables";
 import { phonemeToColorIndex, getPhonemeColor, getSlantColor } from "../utils/phonemeColors";
 import type { SpeechRecognitionEvent, SpeechRecognitionInstance } from "../types/speechRecognition";
+import { MicIcon } from "./icons";
 
 const DEBOUNCE_MS = 400;
 
@@ -41,17 +42,6 @@ interface LyricEditorProps {
 
 const SpeechRecognitionClass =
   (typeof window !== "undefined" && (window.SpeechRecognition ?? window.webkitSpeechRecognition)) || null;
-
-function MicIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <rect x="9" y="2" width="6" height="12" rx="3" />
-      <path d="M5 10a7 7 0 0 0 14 0" />
-      <line x1="12" y1="19" x2="12" y2="22" />
-      <line x1="8" y1="22" x2="16" y2="22" />
-    </svg>
-  );
-}
 
 const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
   function LyricEditor(
@@ -155,11 +145,12 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
     },
   }), [onContentChange]);
 
-  const [viewMode, setViewMode] = useState<"lyric" | "phonemes" | "stress">("lyric");
+  const [mode, setMode] = useState<"rhymes" | "stress">("rhymes");
+  const [annotation, setAnnotation] = useState<"syllables" | "phonemes">("syllables");
   const [localRhymeMode, setLocalRhymeMode] = useState<"highlight" | "underline">(rhymeMode);
 
-  const effectiveShowPhonemes = showPhonemes || viewMode === "phonemes";
-  const effectiveShowStress = showStress || viewMode === "stress";
+  const effectiveShowPhonemes = showPhonemes || annotation === "phonemes";
+  const effectiveShowStress = showStress || mode === "stress";
   const effectiveRhymeMode = rhymeMode !== "highlight" ? rhymeMode : localRhymeMode;
   const lineHeight = effectiveShowPhonemes ? PHONEME_LINE_HEIGHT : EDITOR_STYLE.lineHeight;
 
@@ -219,22 +210,6 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
   const renderedLines = useMemo(() => {
     return lines.map((line, lineIdx) => {
       const slantVowelKey = slantColorMap.get(lineIdx);
-
-      if (effectiveShowPhonemes) {
-        const wordSylsList = syllableData[lineIdx] ?? [];
-        let phonemeWordIdx = 0;
-        return line.split(/(\s+)/).map((token, ti) => {
-          if (/^\s+$/.test(token)) return token;
-          const currentPhonemeWordIdx = phonemeWordIdx++;
-          const syls = wordSylsList[currentPhonemeWordIdx] ?? [];
-          const phonemeLabel = syls.map((s) => s.key || "·").join("-");
-          return (
-            <span key={ti} className="word-annotation" data-phonemes={phonemeLabel || undefined}>
-              {token}
-            </span>
-          );
-        });
-      }
 
       const tokens = line.split(/(\s+)/);
       let wordIdx = 0;
@@ -334,10 +309,18 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
           return <span key={si}>{syl.text}</span>;
         });
 
+        const phonemeLabel = effectiveShowPhonemes
+          ? wordSyls.map((s) => s.key || "·").join("-")
+          : "";
+
         return (
           <span key={ti}>
             {prefix}
-            <span className="word-annotation" data-syllables={wordSyls.length > 0 ? String(wordSyls.length) : ""}>
+            <span
+              className="word-annotation"
+              data-syllables={!effectiveShowPhonemes && wordSyls.length > 0 ? String(wordSyls.length) : ""}
+              data-phonemes={effectiveShowPhonemes ? phonemeLabel || undefined : undefined}
+            >
               {sylSpans.length > 0 ? sylSpans : wordCore}
             </span>
             {suffix}
@@ -447,31 +430,29 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
       {/* ── Toolbar ── */}
       <div className="editor-toolbar">
         <div className="toolbar-group">
-          <span className="toolbar-label">View</span>
+          <span className="toolbar-label">Mode</span>
           <button
-            className={`toolbar-btn${viewMode === "lyric" ? " toolbar-btn--active" : ""}`}
-            onClick={() => setViewMode("lyric")}
-          >Lyric</button>
+            className={`toolbar-btn${mode === "rhymes" ? " toolbar-btn--active" : ""}`}
+            onClick={() => setMode("rhymes")}
+          >Rhymes</button>
           <button
-            className={`toolbar-btn${viewMode === "phonemes" ? " toolbar-btn--active" : ""}`}
-            onClick={() => setViewMode("phonemes")}
-          >Phonemes</button>
-          <button
-            className={`toolbar-btn${viewMode === "stress" ? " toolbar-btn--active" : ""}`}
-            onClick={() => setViewMode("stress")}
+            className={`toolbar-btn${mode === "stress" ? " toolbar-btn--active" : ""}`}
+            onClick={() => setMode("stress")}
           >Stress</button>
         </div>
         <div className="toolbar-sep" />
         <div className="toolbar-group">
-          <span className="toolbar-label">Rhyme</span>
+          <span className="toolbar-label">View</span>
           <button
-            className={`toolbar-btn${effectiveRhymeMode === "highlight" ? " toolbar-btn--active" : ""}`}
-            onClick={() => setLocalRhymeMode("highlight")}
-          >Highlight</button>
+            className="toolbar-btn"
+            onClick={() => setAnnotation((a) => (a === "syllables" ? "phonemes" : "syllables"))}
+            title="Toggle syllable count / phoneme labels"
+          >{annotation === "syllables" ? "Syllables" : "Phonemes"}</button>
           <button
-            className={`toolbar-btn${effectiveRhymeMode === "underline" ? " toolbar-btn--active" : ""}`}
-            onClick={() => setLocalRhymeMode("underline")}
-          >Underline</button>
+            className="toolbar-btn"
+            onClick={() => setLocalRhymeMode((m) => (m === "highlight" ? "underline" : "highlight"))}
+            title="Toggle rhyme highlight / underline"
+          >{effectiveRhymeMode === "highlight" ? "Highlight" : "Underline"}</button>
         </div>
         {effectiveShowStress && (
           <>

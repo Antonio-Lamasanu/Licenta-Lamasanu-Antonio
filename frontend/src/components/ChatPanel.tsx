@@ -4,12 +4,15 @@ import remarkGfm from "remark-gfm";
 import type { ChatSession, ChatTurn } from "../api/chat";
 import { CHAT_CATEGORIES } from "../utils/chatModes";
 import { useSpeechToText } from "../hooks/useSpeechToText";
+import { MicIcon } from "./icons";
 
 interface ChatPanelProps {
   session: ChatSession | null;
   turns: ChatTurn[];
   loadingTurns: boolean;
   sending: boolean;
+  pendingUserText: string | null;
+  streamingText: string | null;
   error: string | null;
   onSend: (content: string) => void;
   activeNoteContent: string;
@@ -21,6 +24,8 @@ export default function ChatPanel({
   turns,
   loadingTurns,
   sending,
+  pendingUserText,
+  streamingText,
   error,
   onSend,
   activeNoteContent,
@@ -48,7 +53,7 @@ export default function ChatPanel({
 
   useEffect(() => {
     threadRef.current?.scrollTo({ top: threadRef.current.scrollHeight, behavior: "smooth" });
-  }, [turns, sending]);
+  }, [turns, sending, pendingUserText, streamingText]);
 
   function handleSend() {
     const content = draft.trim();
@@ -139,7 +144,7 @@ export default function ChatPanel({
           aria-label="Toggle voice input"
           type="button"
         >
-          🎤
+          <MicIcon />
         </button>
       )}
       <button className="chat-composer-send" onClick={handleSend} disabled={sending || !draft.trim()}>
@@ -173,14 +178,28 @@ export default function ChatPanel({
             </div>
           </div>
         ))}
+        {pendingUserText !== null && (
+          <div className="chat-bubble chat-bubble--user">
+            <div className="chat-bubble-role">You</div>
+            <div className="chat-bubble-content">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{pendingUserText}</ReactMarkdown>
+            </div>
+          </div>
+        )}
         {sending && (
           <div className="chat-bubble chat-bubble--assistant chat-bubble--typing">
             <div className="chat-bubble-role">Rhymathic</div>
-            <div className="chat-typing-dots">
-              <span />
-              <span />
-              <span />
-            </div>
+            {streamingText ? (
+              <div className="chat-bubble-content">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{streamingText}</ReactMarkdown>
+              </div>
+            ) : (
+              <div className="chat-typing-dots">
+                <span />
+                <span />
+                <span />
+              </div>
+            )}
           </div>
         )}
       </div>

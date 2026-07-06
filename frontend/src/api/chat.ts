@@ -15,10 +15,10 @@ export interface ChatTurn {
   created_at: string;
 }
 
-export interface ChatTurnPair {
-  user_turn: ChatTurn;
-  assistant_turn: ChatTurn;
-  session_title: string | null;
+export interface ChatStreamHandlers {
+  onUserTurn: (turn: ChatTurn) => void;
+  onDelta: (text: string) => void;
+  onDone: (assistantTurn: ChatTurn, sessionTitle: string | null) => void;
 }
 
 export interface UserProfile {
@@ -65,14 +65,47 @@ export async function fetchChatTurns(sessionId: number): Promise<ChatTurn[]> {
   return res.json() as Promise<ChatTurn[]>;
 }
 
-export async function postChatTurn(sessionId: number, content: string): Promise<ChatTurnPair> {
+export async function streamChatTurn(
+  sessionId: number,
+  content: string,
+  handlers: ChatStreamHandlers
+): Promise<void> {
   const res = await apiFetch(`/api/chat-sessions/${sessionId}/turns`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ content }),
   });
-  if (!res.ok) return extractError(res, `Chat turns API error: ${res.status}`);
-  return res.json() as Promise<ChatTurnPair>;
+  if (!res.ok || !res.body) return extractError(res, `Chat turns API error: ${res.status}`);
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    let sepIndex: number;
+    while ((sepIndex = buffer.indexOf("\n\n")) !== -1) {
+      const rawEvent = buffer.slice(0, sepIndex);
+      buffer = buffer.slice(sepIndex + 2);
+
+      let eventName = "message";
+      let dataStr = "";
+      for (const line of rawEvent.split("\n")) {
+        if (line.startsWith("event:")) eventName = line.slice(6).trim();
+        else if (line.startsWith("data:")) dataStr += line.slice(5).trim();
+      }
+      if (!dataStr) continue;
+      const data = JSON.parse(dataStr);
+
+      if (eventName === "user_turn") handlers.onUserTurn(data as ChatTurn);
+      else if (eventName === "delta") handlers.onDelta(data.text as string);
+      else if (eventName === "done") handlers.onDone(data.assistant_turn as ChatTurn, data.session_title ?? null);
+      else if (eventName === "error") throw new Error(data.detail ?? "Chat stream error");
+    }
+  }
 }
 
 export async function fetchProfile(): Promise<UserProfile> {

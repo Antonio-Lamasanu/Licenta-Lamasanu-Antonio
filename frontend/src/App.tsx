@@ -16,7 +16,7 @@ import {
   createChatSession,
   deleteChatSession,
   fetchChatTurns,
-  postChatTurn,
+  streamChatTurn,
   type ChatSession,
   type ChatTurn,
 } from "./api/chat";
@@ -73,6 +73,8 @@ export default function App({ user, onLogout, justRegistered }: AppProps) {
   const [chatTurns, setChatTurns] = useState<ChatTurn[]>([]);
   const [chatTurnsLoading, setChatTurnsLoading] = useState(false);
   const [chatSending, setChatSending] = useState(false);
+  const [chatPendingUserText, setChatPendingUserText] = useState<string | null>(null);
+  const [chatStreamingText, setChatStreamingText] = useState<string | null>(null);
   const [chatError, setChatError] = useState<string | null>(null);
   const [chatInject, setChatInject] = useState<{ text: string; seq: number } | null>(null);
 
@@ -183,6 +185,7 @@ export default function App({ user, onLogout, justRegistered }: AppProps) {
     setLastSaved(note.title, note.content);
     setActiveColorGroups(null);
     titleIsManual.current = note.title.trim() !== "";
+    setActiveTab("write");
   }
 
   async function handleNewNote() {
@@ -320,21 +323,36 @@ export default function App({ user, onLogout, justRegistered }: AppProps) {
 
   async function handleSendChatMessage(content: string) {
     if (activeChatSessionId === null) return;
+    const sessionId = activeChatSessionId;
     setChatError(null);
     setChatSending(true);
+    setChatPendingUserText(content);
+    setChatStreamingText("");
     try {
-      const pair = await postChatTurn(activeChatSessionId, content);
-      setChatTurns((prev) => [...prev, pair.user_turn, pair.assistant_turn]);
-      if (pair.session_title) {
-        const title = pair.session_title;
-        setChatSessions((prev) =>
-          prev.map((s) => (s.id === activeChatSessionId ? { ...s, title } : s))
-        );
-      }
+      await streamChatTurn(sessionId, content, {
+        onUserTurn: (turn) => {
+          setChatTurns((prev) => [...prev, turn]);
+          setChatPendingUserText(null);
+        },
+        onDelta: (text) => {
+          setChatStreamingText((prev) => (prev ?? "") + text);
+        },
+        onDone: (assistantTurn, sessionTitle) => {
+          setChatTurns((prev) => [...prev, assistantTurn]);
+          setChatStreamingText(null);
+          if (sessionTitle) {
+            setChatSessions((prev) =>
+              prev.map((s) => (s.id === sessionId ? { ...s, title: sessionTitle } : s))
+            );
+          }
+        },
+      });
     } catch (e) {
       setChatError(e instanceof Error ? e.message : "Failed to send message");
     } finally {
       setChatSending(false);
+      setChatPendingUserText(null);
+      setChatStreamingText(null);
     }
   }
 
@@ -372,13 +390,13 @@ export default function App({ user, onLogout, justRegistered }: AppProps) {
             onClick={() => setActiveTab("write")}
           >Write</button>
           <button
-            className={`topbar-tab${activeTab === "library" ? " topbar-tab--active" : ""}`}
-            onClick={() => setActiveTab("library")}
-          >Library</button>
-          <button
             className={`topbar-tab${activeTab === "chat" ? " topbar-tab--active" : ""}`}
             onClick={() => setActiveTab("chat")}
           >Chat</button>
+          <button
+            className={`topbar-tab${activeTab === "library" ? " topbar-tab--active" : ""}`}
+            onClick={() => setActiveTab("library")}
+          >Library</button>
           {user.is_admin && (
             <button
               className={`topbar-tab${activeTab === "admin" ? " topbar-tab--active" : ""}`}
@@ -454,7 +472,7 @@ export default function App({ user, onLogout, justRegistered }: AppProps) {
           isDarkTheme={isDark}
           chatSessions={chatSessions}
           activeChatSessionId={activeChatSessionId}
-          onSelectChatSession={setActiveChatSessionId}
+          onSelectChatSession={(id) => { setActiveChatSessionId(id); setActiveTab("chat"); }}
           onNewChatSession={handleNewChatSession}
           onDeleteChatSession={handleDeleteChatSession}
         />
@@ -511,6 +529,8 @@ export default function App({ user, onLogout, justRegistered }: AppProps) {
               turns={chatTurns}
               loadingTurns={chatTurnsLoading}
               sending={chatSending}
+              pendingUserText={chatPendingUserText}
+              streamingText={chatStreamingText}
               error={chatError}
               onSend={handleSendChatMessage}
               activeNoteContent={activeContent}
