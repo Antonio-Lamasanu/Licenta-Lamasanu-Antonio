@@ -19,8 +19,6 @@ const EDITOR_STYLE = {
   overflowWrap: "break-word" as const,
 } as const;
 
-const PHONEME_LINE_HEIGHT = "64px";
-
 export interface LyricEditorHandle {
   insertAtCursor: (text: string) => void;
 }
@@ -36,6 +34,7 @@ interface LyricEditorProps {
   showStress?: boolean;
   activeColorGroups?: Set<number> | null;
   onGroupsChange?: (groups: ActiveGroup[]) => void;
+  onModeChange?: (mode: "rhymes" | "stress") => void;
   onSendToChat?: (text: string) => void;
   onSearchRhymes?: (text: string) => void;
 }
@@ -56,6 +55,7 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
       showStress = false,
       activeColorGroups = null,
       onGroupsChange,
+      onModeChange,
       onSendToChat,
       onSearchRhymes,
     }: LyricEditorProps,
@@ -146,13 +146,14 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
   }), [onContentChange]);
 
   const [mode, setMode] = useState<"rhymes" | "stress">("rhymes");
+  useEffect(() => { onModeChange?.(mode); }, [mode, onModeChange]);
   const [annotation, setAnnotation] = useState<"syllables" | "phonemes">("syllables");
   const [localRhymeMode, setLocalRhymeMode] = useState<"highlight" | "underline">(rhymeMode);
 
   const effectiveShowPhonemes = showPhonemes || annotation === "phonemes";
   const effectiveShowStress = showStress || mode === "stress";
   const effectiveRhymeMode = rhymeMode !== "highlight" ? rhymeMode : localRhymeMode;
-  const lineHeight = effectiveShowPhonemes ? PHONEME_LINE_HEIGHT : EDITOR_STYLE.lineHeight;
+  const lineHeight = EDITOR_STYLE.lineHeight;
 
   const runAnalysis = useCallback((value: string) => {
     const lines = value.split("\n");
@@ -182,7 +183,7 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
           const groups: ActiveGroup[] = syllable_groups.map((g) => ({
             phonemeKey: g.phoneme_key,
             isSlant: false,
-            colorIndex: g.color_index,
+            colorIndex: phonemeToColorIndex(g.phoneme_key),
           }));
           onGroupsChange(groups);
         }
@@ -454,27 +455,6 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
             title="Toggle rhyme highlight / underline"
           >{effectiveRhymeMode === "highlight" ? "Highlight" : "Underline"}</button>
         </div>
-        {effectiveShowStress && (
-          <>
-            <div className="toolbar-sep" />
-            <div className="stress-legend">
-              <span className="stress-legend-item">
-                <span
-                  className="stress-swatch"
-                  style={{ background: isDarkTheme ? "rgba(255,120,80,0.65)" : "rgba(200,80,40,0.38)" }}
-                />
-                primary
-              </span>
-              <span className="stress-legend-item">
-                <span
-                  className="stress-swatch"
-                  style={{ background: isDarkTheme ? "rgba(255,200,80,0.55)" : "rgba(200,150,40,0.34)" }}
-                />
-                secondary
-              </span>
-            </div>
-          </>
-        )}
         <div className="toolbar-spacer" />
         {SpeechRecognitionClass && (
           <button
@@ -577,18 +557,6 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
           })}
         </div>
 
-      </div>
-
-      {/* ── Editor footer ── */}
-      <div className="editor-footer">
-        <div className="footer-caret">
-          <span className="caret-label">Cursor</span>
-          <span className="caret-word">—</span>
-        </div>
-        <div className="scheme-pill">
-          <span className="scheme-dot" />
-          <span className="scheme-text">scheme</span>
-        </div>
       </div>
 
     </div>

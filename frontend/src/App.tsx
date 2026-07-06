@@ -90,6 +90,7 @@ export default function App({ user, onLogout, justRegistered }: AppProps) {
   // ── Active rhyme groups ──
   const [activeGroups, setActiveGroups] = useState<ActiveGroup[]>([]);
   const [activeColorGroups, setActiveColorGroups] = useState<Set<number> | null>(null);
+  const [editorMode, setEditorMode] = useState<"rhymes" | "stress">("rhymes");
 
   // ── Scratchpad ──
   const [scratchpadWords, setScratchpadWords] = useState<string[]>([]);
@@ -469,6 +470,7 @@ export default function App({ user, onLogout, justRegistered }: AppProps) {
           onColorGroupToggle={handleColorGroupToggle}
           onSelectAll={handleToggleAll}
           activeGroups={activeGroups}
+          editorMode={editorMode}
           isDarkTheme={isDark}
           chatSessions={chatSessions}
           activeChatSessionId={activeChatSessionId}
@@ -504,6 +506,7 @@ export default function App({ user, onLogout, justRegistered }: AppProps) {
                     isDarkTheme={isDark}
                     activeColorGroups={activeColorGroups}
                     onGroupsChange={setActiveGroups}
+                    onModeChange={setEditorMode}
                     onSendToChat={handleSendToChat}
                     onSearchRhymes={handleSearchRhymesFromSelection}
                   />
@@ -556,12 +559,6 @@ export default function App({ user, onLogout, justRegistered }: AppProps) {
           />
         )}
       </div>
-
-      {/* ── Status bar ── */}
-      <footer className="status-bar">
-        <span>en-US · CMU + pyphen · Auto-save 1s</span>
-        <span>build 2026.06</span>
-      </footer>
 
       {/* ── Scratchpad overlay ── */}
       {scratchpadOpen && (

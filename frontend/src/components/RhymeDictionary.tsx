@@ -295,7 +295,6 @@ export default function RhymeDictionary({
       {/* ── Panel footer ── */}
       <div className="rhyme-panel-foot">
         <span className="rhyme-meta">Click a word to pin → scratchpad</span>
-        <span className="rhyme-meta">CMU dict</span>
       </div>
     </div>
   );

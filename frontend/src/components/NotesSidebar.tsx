@@ -21,6 +21,7 @@ interface NotesSidebarProps {
   onColorGroupToggle: (index: number) => void;
   onSelectAll: () => void;
   activeGroups: ActiveGroup[];
+  editorMode: "rhymes" | "stress";
   isDarkTheme: boolean;
   chatSessions: ChatSession[];
   activeChatSessionId: number | null;
@@ -49,6 +50,7 @@ export default function NotesSidebar({
   onColorGroupToggle,
   onSelectAll,
   activeGroups,
+  editorMode,
   isDarkTheme,
   chatSessions,
   activeChatSessionId,
@@ -206,7 +208,26 @@ export default function NotesSidebar({
         />
       )}
 
-      {isOpen && activeGroups.length > 0 && (
+      {isOpen && editorMode === "stress" && (
+        <div className="sidebar-legend stress-legend">
+          <span className="stress-legend-item">
+            <span
+              className="stress-swatch"
+              style={{ background: isDarkTheme ? "rgba(255,120,80,0.65)" : "rgba(200,80,40,0.38)" }}
+            />
+            primary
+          </span>
+          <span className="stress-legend-item">
+            <span
+              className="stress-swatch"
+              style={{ background: isDarkTheme ? "rgba(255,200,80,0.55)" : "rgba(200,150,40,0.34)" }}
+            />
+            secondary
+          </span>
+        </div>
+      )}
+
+      {isOpen && editorMode === "rhymes" && activeGroups.length > 0 && (
         <div className="sidebar-legend">
           {activeGroups.map((group) => {
             const palette = group.isSlant

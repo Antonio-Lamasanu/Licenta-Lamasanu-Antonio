@@ -60,7 +60,7 @@ html, body, #root {
 /* ─── App shell ─── */
 .app {
   display: grid;
-  grid-template-rows: 56px 1fr 32px;
+  grid-template-rows: 56px 1fr;
   height: 100vh;
   background: var(--bg);
   color: var(--ink);
@@ -193,19 +193,6 @@ html, body, #root {
   overflow: hidden;
   height: 100%;
   transition: grid-template-columns 0.22s ease;
-}
-
-/* ─── Status bar (bottom footer) ─── */
-.status-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 20px;
-  background: var(--panel);
-  border-top: 1px solid var(--rule);
-  font-family: var(--mono);
-  font-size: 10.5px;
-  color: var(--ink-4);
 }
 
 /* ─── Sidebar ─── */
@@ -613,7 +600,7 @@ html, body, #root {
 .toolbar-action--primary:hover { opacity: 0.85; }
 .toolbar-action:disabled { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
 
-/* ─── Stress legend (in toolbar) ─── */
+/* ─── Stress legend (sidebar, stress mode) ─── */
 .stress-legend {
   display: flex;
   align-items: center;
@@ -756,67 +743,10 @@ html, body, #root {
   border-radius: 1px;
 }
 
-/* ─── Editor footer ─── */
-.editor-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 36px;
-  border-top: 1px solid var(--rule);
-  background: var(--panel);
-  flex-shrink: 0;
-}
-
-.footer-caret {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.caret-label {
-  font-family: var(--mono);
-  font-size: 9.5px;
-  font-weight: 500;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--ink-4);
-}
-
-.caret-word {
-  font-family: var(--serif);
-  font-style: italic;
-  font-size: 14px;
-  color: var(--ink-2);
-}
-
 .caret-phonetic {
   font-family: var(--mono);
   font-size: 11px;
   color: var(--ink-4);
-}
-
-.scheme-pill {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 3px 10px;
-  border: 1px solid var(--rule);
-  border-radius: 100px;
-  background: var(--bg-soft);
-}
-
-.scheme-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--accent-2);
-  flex-shrink: 0;
-}
-
-.scheme-text {
-  font-family: var(--mono);
-  font-size: 10.5px;
-  color: var(--ink-3);
 }
 
 /* ─── Rhyme panel ─── */
