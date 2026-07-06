@@ -1,25 +1,23 @@
-import { useState, useEffect, useRef, useCallback, forwardRef, useImperativeHandle, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback, forwardRef, useImperativeHandle, useMemo, useLayoutEffect } from "react";
 import { fetchAnalysis, type SyllableInfo, type ActiveGroup } from "../api/syllables";
 import { phonemeToColorIndex, getPhonemeColor, getSlantColor } from "../utils/phonemeColors";
 
 const DEBOUNCE_MS = 400;
 
-// Shared style values — must be identical on mirror div and textarea
 const EDITOR_STYLE = {
   fontFamily: "var(--serif)",
   fontSize: "21px",
-  lineHeight: "50px", // 2.4 × 21px — absolute so ruler + meter rail rows stay in sync
-  whiteSpace: "pre" as const,
-  letterSpacing: "-0.005em",
+  lineHeight: "50px",
+  whiteSpace: "pre-wrap" as const,
+  letterSpacing: "0",
   wordSpacing: "normal",
   tabSize: 4,
   padding: 0,
   border: "none",
+  overflowWrap: "break-word" as const,
 } as const;
 
-export interface LyricEditorHandle {
-  insertAtCursor: (text: string) => void;
-}
+const PHONEME_LINE_HEIGHT = "64px";
 
 export interface LyricEditorHandle {
   insertAtCursor: (text: string) => void;
@@ -34,8 +32,55 @@ interface LyricEditorProps {
   rhymeMode?: "highlight" | "underline";
   showPhonemes?: boolean;
   showStress?: boolean;
-  activeColorGroups?: Set<number> | null; // null = show all
+  activeColorGroups?: Set<number> | null;
   onGroupsChange?: (groups: ActiveGroup[]) => void;
+}
+
+// ── SpeechRecognition types ────────────────────────────────────────────────
+interface SpeechRecognitionEvent extends Event {
+  resultIndex: number;
+  results: SpeechRecognitionResultList;
+}
+interface SpeechRecognitionResultList {
+  readonly length: number;
+  [index: number]: SpeechRecognitionResult;
+}
+interface SpeechRecognitionResult {
+  readonly isFinal: boolean;
+  [index: number]: SpeechRecognitionAlternative;
+}
+interface SpeechRecognitionAlternative {
+  transcript: string;
+}
+declare global {
+  interface Window {
+    SpeechRecognition?: new () => SpeechRecognitionInstance;
+    webkitSpeechRecognition?: new () => SpeechRecognitionInstance;
+  }
+  interface SpeechRecognitionInstance extends EventTarget {
+    continuous: boolean;
+    interimResults: boolean;
+    lang: string;
+    start(): void;
+    stop(): void;
+    onresult: ((event: SpeechRecognitionEvent) => void) | null;
+    onerror: ((event: Event) => void) | null;
+    onend: (() => void) | null;
+  }
+}
+const SpeechRecognitionClass =
+  (typeof window !== "undefined" && (window.SpeechRecognition ?? window.webkitSpeechRecognition)) || null;
+// ──────────────────────────────────────────────────────────────────────────
+
+function MicIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="9" y="2" width="6" height="12" rx="3" />
+      <path d="M5 10a7 7 0 0 0 14 0" />
+      <line x1="12" y1="19" x2="12" y2="22" />
+      <line x1="8" y1="22" x2="16" y2="22" />
+    </svg>
+  );
 }
 
 const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
@@ -58,26 +103,70 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
   const [syllableData, setSyllableData] = useState<SyllableInfo[][][]>([]);
   const [syllableColorMap, setSyllableColorMap] = useState<Map<string, string>>(new Map());
   const [slantColorMap, setSlantColorMap] = useState<Map<number, string>>(new Map());
-  // key = line index, value = vowel_key; assumes at most one slant group per line (last write wins)
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  useImperativeHandle(ref, () => ({
-    insertAtCursor(text: string) {
-      const el = textareaRef.current;
-      if (!el) return;
-      const { selectionStart, selectionEnd, value } = el;
-      const newValue = value.slice(0, selectionStart) + text + value.slice(selectionEnd);
-      onContentChange(newValue);
-      requestAnimationFrame(() => {
-        el.setSelectionRange(selectionStart + text.length, selectionStart + text.length);
-        el.focus();
-      });
-    },
-  }));
-
   const mirrorRef = useRef<HTMLDivElement>(null);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const contentRef = useRef(content);
+  useEffect(() => { contentRef.current = content; }, [content]);
+
+  // ── Line height measurement for wrap tracking ─────────────────────────
+  const lineRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const [lineHeights, setLineHeights] = useState<number[]>([]);
+  const prevHeightsRef = useRef<number[]>([]);
+
+  useLayoutEffect(() => {
+    const heights = lineRefs.current.map(el => el ? el.getBoundingClientRect().height : parseFloat(EDITOR_STYLE.lineHeight));
+    const changed =
+      heights.length !== prevHeightsRef.current.length ||
+      heights.some((h, i) => Math.abs(h - (prevHeightsRef.current[i] ?? 0)) > 0.5);
+    if (changed) {
+      prevHeightsRef.current = heights;
+      setLineHeights([...heights]);
+    }
+  });
+  // ──────────────────────────────────────────────────────────────────────
+
+  // ── Voice / speech ────────────────────────────────────────────────────
+  const [isRecording, setIsRecording] = useState(false);
+  const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
+  const speechInsertPos = useRef(0);
+
+  function startRecording() {
+    if (!SpeechRecognitionClass) return;
+    speechInsertPos.current = textareaRef.current?.selectionStart ?? contentRef.current.length;
+    const r = new SpeechRecognitionClass();
+    r.continuous = true;
+    r.interimResults = false;
+    r.lang = "en-US";
+    r.onresult = (event: SpeechRecognitionEvent) => {
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        if (event.results[i].isFinal) {
+          const text = event.results[i][0].transcript.trim();
+          if (!text) continue;
+          const pos = speechInsertPos.current;
+          const cur = contentRef.current;
+          const sep = pos > 0 && !cur.slice(0, pos).endsWith("\n") ? " " : "";
+          const next = cur.slice(0, pos) + sep + text + cur.slice(pos);
+          onContentChange(next);
+          speechInsertPos.current = pos + sep.length + text.length;
+        }
+      }
+    };
+    r.onerror = () => setIsRecording(false);
+    r.onend = () => setIsRecording(false);
+    recognitionRef.current = r;
+    r.start();
+    setIsRecording(true);
+  }
+
+  function stopRecording() {
+    recognitionRef.current?.stop();
+    setIsRecording(false);
+  }
+
+  useEffect(() => () => { recognitionRef.current?.stop(); }, []);
+  // ──────────────────────────────────────────────────────────────────────
 
   useImperativeHandle(ref, () => ({
     insertAtCursor(text: string) {
@@ -93,15 +182,13 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
     },
   }), [onContentChange]);
 
-  // Internal toolbar state (props take precedence when explicitly passed)
   const [viewMode, setViewMode] = useState<"lyric" | "phonemes" | "stress">("lyric");
   const [localRhymeMode, setLocalRhymeMode] = useState<"highlight" | "underline">(rhymeMode);
 
-  // Derived effective modes: prop takes precedence over internal state
   const effectiveShowPhonemes = showPhonemes || viewMode === "phonemes";
   const effectiveShowStress = showStress || viewMode === "stress";
-  // Prop overrides local state only when it's "underline"; "highlight" (the default) defers to local state
   const effectiveRhymeMode = rhymeMode !== "highlight" ? rhymeMode : localRhymeMode;
+  const lineHeight = effectiveShowPhonemes ? PHONEME_LINE_HEIGHT : EDITOR_STYLE.lineHeight;
 
   const runAnalysis = useCallback((value: string) => {
     const lines = value.split("\n");
@@ -126,19 +213,13 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
         }
         setSlantColorMap(slantMap);
 
+        // Only expose perfect rhyme groups to the legend — slant rhymes are ambient
         if (onGroupsChange) {
-          const groups: ActiveGroup[] = [
-            ...syllable_groups.map((g) => ({
-              phonemeKey: g.phoneme_key,
-              isSlant: false,
-              colorIndex: g.color_index,
-            })),
-            ...(slant_groups ?? []).map((g) => ({
-              phonemeKey: g.vowel_key,
-              isSlant: true,
-              colorIndex: g.color_index,
-            })),
-          ];
+          const groups: ActiveGroup[] = syllable_groups.map((g) => ({
+            phonemeKey: g.phoneme_key,
+            isSlant: false,
+            colorIndex: g.color_index,
+          }));
           onGroupsChange(groups);
         }
       })
@@ -153,8 +234,6 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
     };
   }, [content, runAnalysis]);
 
-  // Auto-resize: grow the textarea to fit all content so the outer page scrollbar
-  // is the only one — no internal textarea scrollbar.
   useEffect(() => {
     const el = textareaRef.current;
     if (!el) return;
@@ -177,19 +256,7 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
           const syls = wordSylsList[currentPhonemeWordIdx] ?? [];
           const phonemeLabel = syls.map((s) => s.key || "·").join("-");
           return (
-            <span key={ti} className="word-annotation" style={{ position: "relative" }}>
-              <span style={{
-                position: "absolute",
-                top: "-14px",
-                left: 0,
-                fontSize: "9px",
-                fontFamily: "var(--mono)",
-                color: "var(--ink-4)",
-                whiteSpace: "nowrap",
-                pointerEvents: "none",
-              }}>
-                {phonemeLabel}
-              </span>
+            <span key={ti} className="word-annotation" data-phonemes={phonemeLabel || undefined}>
               {token}
             </span>
           );
@@ -216,47 +283,76 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
           const ci = phonemeKey !== undefined ? phonemeToColorIndex(phonemeKey) : undefined;
           const isFiltered = activeColorGroups !== null && ci !== undefined && !activeColorGroups.has(ci);
 
-          if (effectiveShowStress) {
-            const stressBg =
-              syl.stress === 1 ? (isDarkTheme ? "rgba(255,120,80,0.35)" : "rgba(200,80,40,0.18)") :
-              syl.stress === 2 ? (isDarkTheme ? "rgba(255,200,80,0.25)" : "rgba(200,150,40,0.12)") :
-              undefined;
-            return (
-              <span key={si} style={stressBg ? { backgroundColor: stressBg, borderRadius: "2px" } : undefined}>
-                {syl.text}
-              </span>
-            );
-          }
+          // Stress background
+          const stressBg =
+            effectiveShowStress && syl.stress === 1
+              ? (isDarkTheme ? "rgba(255,120,80,0.50)" : "rgba(200,80,40,0.22)")
+              : effectiveShowStress && syl.stress === 2
+              ? (isDarkTheme ? "rgba(255,200,80,0.40)" : "rgba(200,150,40,0.20)")
+              : undefined;
 
-          if (phonemeKey !== undefined && !isFiltered) {
+          // In stress mode, suppress rhyme coloring entirely
+          if (!effectiveShowStress && phonemeKey !== undefined && !isFiltered) {
             const palette = getPhonemeColor(phonemeKey, isDarkTheme);
+            const underlineColor = isDarkTheme ? palette.bg : palette.ink;
             if (effectiveRhymeMode === "underline") {
               return (
-                <span key={si} style={{ borderBottom: `3px solid ${palette.ink}`, textUnderlineOffset: "3px", color: "inherit" }}>
+                <span key={si} style={{
+                  borderBottom: `4px solid ${underlineColor}`,
+                  color: "inherit",
+                }}>
                   {syl.text}
                 </span>
               );
             }
             return (
-              <span key={si} style={{ backgroundColor: palette.bg, color: palette.ink, borderRadius: "3px", padding: "0 1px" }}>
+              <span key={si} style={{
+                backgroundColor: palette.bg,
+                color: palette.ink,
+                borderRadius: "3px",
+                boxShadow: `0 0 0 1px ${palette.bg}`,
+              }}>
                 {syl.text}
               </span>
             );
           }
 
+          // Slant rhyme — last syllable of last word in line (ambient, not filterable)
           const isLastWord = currentWordIdx === (syllableData[lineIdx]?.length ?? 0) - 1;
           const isLastSyl = si === wordSyls.length - 1;
-          if (slantVowelKey !== undefined && isLastWord && isLastSyl) {
+          if (!effectiveShowStress && slantVowelKey !== undefined && isLastWord && isLastSyl) {
             const slantPalette = getSlantColor(slantVowelKey, isDarkTheme);
+            const slantUnderlineColor = isDarkTheme ? slantPalette.bg : slantPalette.ink;
             if (effectiveRhymeMode === "underline") {
               return (
-                <span key={si} style={{ borderBottom: `3px dashed ${slantPalette.ink}`, textUnderlineOffset: "3px" }}>
+                <span key={si} style={{
+                  borderBottom: `3px dashed ${slantUnderlineColor}`,
+                }}>
                   {syl.text}
                 </span>
               );
             }
             return (
-              <span key={si} style={{ backgroundColor: slantPalette.bg, color: "inherit", borderRadius: "3px", padding: "0 1px" }}>
+              <span key={si} style={{
+                backgroundColor: slantPalette.bg,
+                borderRadius: "3px",
+                boxShadow: `0 0 0 1px ${slantPalette.bg}`,
+              }}>
+                {syl.text}
+              </span>
+            );
+          }
+
+          if (stressBg) {
+            if (effectiveRhymeMode === "underline") {
+              return (
+                <span key={si} style={{ borderBottom: `4px solid ${stressBg}`, color: "inherit" }}>
+                  {syl.text}
+                </span>
+              );
+            }
+            return (
+              <span key={si} style={{ backgroundColor: stressBg, borderRadius: "2px" }}>
                 {syl.text}
               </span>
             );
@@ -300,7 +396,6 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
         const lineStart = value.lastIndexOf("\n", selectionStart - 1) + 1;
         const textBefore = value.slice(lineStart, selectionStart);
         let beforeWords: string[] = textBefore.match(/\S+/g) ?? [];
-        // Drop last token only if cursor is mid-word: word chars on both sides
         if (
           selectionStart > 0 &&
           selectionStart < value.length &&
@@ -316,15 +411,11 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
     }
 
     const selected = value.slice(selectionStart, selectionEnd);
-
-    // Multi-line selection → ignore
     if (selected.includes("\n")) return;
 
     let words: string[] = selected.match(/\S+/g) ?? [];
     if (words.length === 0) return;
 
-    // If the char before the selection is a word char AND the selection itself
-    // starts with a non-space, the first token is a partial word fragment → drop it
     if (
       selectionStart > 0 &&
       /\w/.test(value[selectionStart - 1]) &&
@@ -333,8 +424,6 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
       words = words.slice(1);
     }
 
-    // If the char after the selection is a word char AND the selection ends
-    // with a non-space, the last token is a partial word fragment → drop it
     if (
       selectionEnd < value.length &&
       /\w/.test(value[selectionEnd]) &&
@@ -344,13 +433,13 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
     }
 
     if (words.length === 0) return;
-
     const query = words.join(" ");
     if (query.length < 2) return;
     if (words.length > 5) return;
-
     onSelectionChange?.(query);
   }
+
+  const baseLineH = parseFloat(lineHeight);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden" }}>
@@ -391,14 +480,14 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
               <span className="stress-legend-item">
                 <span
                   className="stress-swatch"
-                  style={{ background: isDarkTheme ? "rgba(255,120,80,0.6)" : "rgba(200,80,40,0.35)" }}
+                  style={{ background: isDarkTheme ? "rgba(255,120,80,0.65)" : "rgba(200,80,40,0.38)" }}
                 />
                 primary
               </span>
               <span className="stress-legend-item">
                 <span
                   className="stress-swatch"
-                  style={{ background: isDarkTheme ? "rgba(255,200,80,0.5)" : "rgba(200,150,40,0.28)" }}
+                  style={{ background: isDarkTheme ? "rgba(255,200,80,0.55)" : "rgba(200,150,40,0.34)" }}
                 />
                 secondary
               </span>
@@ -406,6 +495,17 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
           </>
         )}
         <div className="toolbar-spacer" />
+        {SpeechRecognitionClass && (
+          <button
+            className={`toolbar-btn mic-btn${isRecording ? " mic-btn--active" : ""}`}
+            onClick={isRecording ? stopRecording : startRecording}
+            title={isRecording ? "Stop recording" : "Dictate into note"}
+            aria-label={isRecording ? "Stop recording" : "Start voice input"}
+          >
+            <MicIcon />
+            {isRecording ? " Stop" : " Dictate"}
+          </button>
+        )}
         <button
           className="toolbar-action toolbar-action--primary"
           onClick={() => {
@@ -425,14 +525,17 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
       {/* ── Lyric frame: ruler | body | meter rail ── */}
       <div className="lyric-frame">
 
-        {/* Ruler: line numbers + syllable counts */}
+        {/* Ruler */}
         <div className="lyric-ruler">
-          {lines.map((_, i) => (
-            <div key={i} className="ruler-row" style={{ height: effectiveShowPhonemes ? "64px" : EDITOR_STYLE.lineHeight }}>
-              <span className="ruler-line-num">{i + 1}</span>
-              <span className="ruler-syl-count">{counts[i] ?? ""}</span>
-            </div>
-          ))}
+          {lines.map((_, i) => {
+            const h = lineHeights[i] ?? baseLineH;
+            return (
+              <div key={i} className="ruler-row" style={{ height: h, lineHeight: `${baseLineH}px` }}>
+                <span className="ruler-line-num">{i + 1}</span>
+                <span className="ruler-syl-count">{counts[i] ?? ""}</span>
+              </div>
+            );
+          })}
         </div>
 
         {/* Body: mirror div + textarea */}
@@ -442,17 +545,16 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
             className="lyric-mirror"
             style={{
               ...EDITOR_STYLE,
-              overflow: effectiveShowPhonemes ? "visible" : "hidden",
+              lineHeight,
+              overflow: "visible",
             }}
             aria-hidden="true"
           >
             {renderedLines.map((rendered, lineIdx) => (
               <div
                 key={lineIdx}
-                style={{
-                  height: effectiveShowPhonemes ? "64px" : EDITOR_STYLE.lineHeight,
-                  lineHeight: effectiveShowPhonemes ? "64px" : EDITOR_STYLE.lineHeight,
-                }}
+                ref={el => { lineRefs.current[lineIdx] = el; }}
+                style={{ lineHeight, minHeight: lineHeight }}
               >
                 {rendered}
               </div>
@@ -463,9 +565,11 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
             className="lyric-textarea"
             style={{
               ...EDITOR_STYLE,
+              lineHeight,
               color: "transparent",
               caretColor: "var(--ink)",
               overflow: "hidden",
+              overflowX: "hidden",
               minHeight: "60vh",
               height: "auto",
             }}
@@ -473,38 +577,33 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
             onChange={(e) => onContentChange(e.target.value)}
             onKeyUp={handleSelectionChange}
             onMouseUp={handleSelectionChange}
-            onScroll={() => {
-              if (mirrorRef.current && textareaRef.current) {
-                mirrorRef.current.scrollTop = textareaRef.current.scrollTop;
-                mirrorRef.current.scrollLeft = textareaRef.current.scrollLeft;
-              }
-            }}
-            wrap="off"
+            wrap="soft"
             placeholder="Start writing…"
             spellCheck={false}
           />
         </div>
 
-        {/* Meter rail (stub) */}
-        {/* TODO: Meter rail — visualizes syllable count vs. target; no backend target logic */}
+        {/* Meter rail */}
         <div className="meter-rail">
-          {lines.map((_, i) => (
-            <div key={i} className="meter-row" style={{ height: effectiveShowPhonemes ? "64px" : EDITOR_STYLE.lineHeight }}>
-              <div className="meter-bar-track" />
-            </div>
-          ))}
+          {lines.map((_, i) => {
+            const h = lineHeights[i] ?? baseLineH;
+            const isWrapped = h > baseLineH + 2;
+            return (
+              <div key={i} className={`meter-row${isWrapped ? " meter-row--wrapped" : ""}`} style={{ height: h }}>
+                <div className="meter-bar-track" />
+              </div>
+            );
+          })}
         </div>
 
       </div>
 
       {/* ── Editor footer ── */}
       <div className="editor-footer">
-        {/* TODO: Caret phonetic readout — requires IPA lookup from cursor position */}
         <div className="footer-caret">
           <span className="caret-label">Cursor</span>
           <span className="caret-word">—</span>
         </div>
-        {/* TODO: Scheme pill — requires rhyme scheme analysis (ABAB etc.) */}
         <div className="scheme-pill">
           <span className="scheme-dot" />
           <span className="scheme-text">scheme</span>

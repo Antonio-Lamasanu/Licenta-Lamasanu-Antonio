@@ -77,7 +77,7 @@ DATAMUSE_URL = "https://api.datamuse.com/words"
 
 def _datamuse_fetch(rel_param: str, word: str, max_results: int = 100) -> list[str]:
     """Query Datamuse API. Returns list of words/phrases. Empty list on failure."""
-    logger.debug("datamuse_fetch called: word=%r rel_param=%r", word, rel_param)
+    logger.info("datamuse_fetch: word=%r rel_param=%r", word, rel_param)
     try:
         resp = requests.get(
             DATAMUSE_URL,
@@ -86,7 +86,7 @@ def _datamuse_fetch(rel_param: str, word: str, max_results: int = 100) -> list[s
         )
         resp.raise_for_status()
         results = [item["word"] for item in resp.json()]
-        logger.debug("datamuse_fetch success: word=%r rel_param=%r count=%d", word, rel_param, len(results))
+        logger.info("datamuse_fetch ok: word=%r rel_param=%r count=%d", word, rel_param, len(results))
         return results
     except Exception as exc:
         logger.warning("datamuse_fetch error: word=%r rel_param=%r error=%r", word, rel_param, exc)

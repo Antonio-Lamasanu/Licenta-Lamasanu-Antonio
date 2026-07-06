@@ -73,16 +73,27 @@ const RHYME_SCHEMES = [
   },
 ];
 
-const SCHEME_COLORS: Record<string, string> = {
+const SCHEME_COLORS_LIGHT: Record<string, string> = {
   A: "#FFE7B0", B: "#D9E8FF", C: "#C9EBD2",
   D: "#E5DCFF", E: "#FFD9EC", "-": "transparent",
 };
 
+const SCHEME_COLORS_DARK: Record<string, string> = {
+  A: "#5C4200", B: "#0D2550", C: "#0D3A1E",
+  D: "#22144F", E: "#4A0D2C", "-": "transparent",
+};
+
+const SCHEME_INK_DARK: Record<string, string> = {
+  A: "#FFD87A", B: "#8FB8FF", C: "#7DD8A0",
+  D: "#C4AAFF", E: "#FFB3D6", "-": "var(--ink-3)",
+};
+
 interface LibraryPanelProps {
   onSearchSelect?: (query: string) => void;
+  isDarkTheme?: boolean;
 }
 
-export default function LibraryPanel({ onSearchSelect }: LibraryPanelProps) {
+export default function LibraryPanel({ onSearchSelect, isDarkTheme = false }: LibraryPanelProps) {
   const [tab, setTab] = useState<"reference" | "saved">("reference");
   const [savedSearches, setSavedSearches] = useState<SavedSearch[]>([]);
   const [loadingSearches, setLoadingSearches] = useState(false);
@@ -131,7 +142,10 @@ export default function LibraryPanel({ onSearchSelect }: LibraryPanelProps) {
                   <div key={i} className="scheme-example-line">
                     <span
                       className="scheme-example-label"
-                      style={{ background: SCHEME_COLORS[scheme.labels[i]] ?? "transparent" }}
+                      style={{
+                        background: (isDarkTheme ? SCHEME_COLORS_DARK : SCHEME_COLORS_LIGHT)[scheme.labels[i]] ?? "transparent",
+                        color: isDarkTheme ? (SCHEME_INK_DARK[scheme.labels[i]] ?? "var(--ink-2)") : undefined,
+                      }}
                     >
                       {scheme.labels[i]}
                     </span>

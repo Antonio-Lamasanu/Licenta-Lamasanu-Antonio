@@ -3,11 +3,13 @@ import { fetchRhymes, type RhymeSection, RHYME_MODES, type RhymeMode } from "../
 import { createSavedSearch } from "../api/savedSearches";
 
 interface RhymeDictionaryProps {
+  isOpen?: boolean;
   query: string;
   onQueryChange: (q: string) => void;
   autoMode: boolean;
   onAutoModeToggle: () => void;
   onCollapse?: () => void;
+  onExpand?: () => void;
   onPin?: (word: string) => void;
 }
 
@@ -74,18 +76,13 @@ function RhymesSectionPanel({ section, isOpen, onToggle, onPin }: SectionProps) 
                   </div>
                   <div className="rhyme-chip-grid">
                     {words.map((w) => (
-                      <span key={w} className="rhyme-chip-wrap">
-                        <span className="rhyme-chip">{w}</span>
-                        {onPin && (
-                          <button
-                            className="rhyme-chip-pin"
-                            onClick={() => onPin(w)}
-                            title="Pin to scratchpad"
-                          >
-                            +
-                          </button>
-                        )}
-                      </span>
+                      <span
+                        key={w}
+                        className="rhyme-chip"
+                        onClick={() => onPin?.(w)}
+                        title={onPin ? "Click to pin to scratchpad" : undefined}
+                        style={onPin ? { cursor: "pointer" } : undefined}
+                      >{w}</span>
                     ))}
                   </div>
                 </div>
@@ -98,18 +95,13 @@ function RhymesSectionPanel({ section, isOpen, onToggle, onPin }: SectionProps) 
                     </div>
                     <div className="rhyme-chip-grid">
                       {words.map((w) => (
-                        <span key={w} className="rhyme-chip-wrap">
-                          <span className="rhyme-chip rhyme-chip--other">{w}</span>
-                          {onPin && (
-                            <button
-                              className="rhyme-chip-pin"
-                              onClick={() => onPin(w)}
-                              title="Pin to scratchpad"
-                            >
-                              +
-                            </button>
-                          )}
-                        </span>
+                        <span
+                          key={w}
+                          className="rhyme-chip rhyme-chip--other"
+                          onClick={() => onPin?.(w)}
+                          title={onPin ? "Click to pin to scratchpad" : undefined}
+                          style={onPin ? { cursor: "pointer" } : undefined}
+                        >{w}</span>
                       ))}
                     </div>
                   </div>
@@ -124,11 +116,13 @@ function RhymesSectionPanel({ section, isOpen, onToggle, onPin }: SectionProps) 
 }
 
 export default function RhymeDictionary({
+  isOpen = true,
   query,
   onQueryChange,
   autoMode,
   onAutoModeToggle,
   onCollapse,
+  onExpand,
   onPin,
 }: RhymeDictionaryProps) {
   const [sections, setSections] = useState<RhymeSection[]>([]);
@@ -166,6 +160,20 @@ export default function RhymeDictionary({
     }, 400);
     return () => { if (debounceTimer.current) clearTimeout(debounceTimer.current); };
   }, [query, rhymeMode]);
+
+  if (!isOpen) {
+    return (
+      <div className="rhyme-panel rhyme-panel--collapsed">
+        <button
+          className="rhyme-lip-btn"
+          onClick={onExpand}
+          aria-label="Open rhyme panel"
+        >
+          ☰
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="rhyme-panel">
@@ -286,7 +294,7 @@ export default function RhymeDictionary({
 
       {/* ── Panel footer ── */}
       <div className="rhyme-panel-foot">
-        <span className="rhyme-meta">Hover a word to pin → scratchpad</span>
+        <span className="rhyme-meta">Click a word to pin → scratchpad</span>
         <span className="rhyme-meta">CMU dict</span>
       </div>
     </div>

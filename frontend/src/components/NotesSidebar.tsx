@@ -1,6 +1,7 @@
+import { useState } from "react";
 import type { Note } from "../types/note";
 import type { ActiveGroup } from "../api/syllables";
-import { RHYME_COLORS, RHYME_COLORS_SLANT } from "../phonemeColors";
+import { getPhonemeColor, getSlantColor } from "../utils/phonemeColors";
 
 interface NotesSidebarProps {
   notes: Note[];
@@ -8,25 +9,21 @@ interface NotesSidebarProps {
   onSelectNote: (id: number) => void;
   onNewNote: () => void;
   onDeleteNote: (id: number) => void;
+  onRenameNote: (id: number, title: string) => void;
   isOpen: boolean;
   onToggle: () => void;
   searchQuery: string;
   onSearchChange: (q: string) => void;
   activeColorGroups: Set<number> | null;
   onColorGroupToggle: (index: number) => void;
+  onSelectAll: () => void;
   activeGroups: ActiveGroup[];
+  isDarkTheme: boolean;
 }
 
-// Colors cycling a-h for note left-tab strip
 const NOTE_TAB_COLORS = [
-  "#E9A33A", // a
-  "#C8553D", // b
-  "#5C81C5", // c
-  "#8662C2", // d
-  "#4A8B5E", // e
-  "#C25584", // f
-  "#B59247", // g
-  "#4A8584", // h
+  "#E9A33A", "#C8553D", "#5C81C5", "#8662C2",
+  "#4A8B5E", "#C25584", "#B59247", "#4A8584",
 ];
 
 export default function NotesSidebar({
@@ -35,132 +32,183 @@ export default function NotesSidebar({
   onSelectNote,
   onNewNote,
   onDeleteNote,
+  onRenameNote,
   isOpen,
   onToggle,
   searchQuery,
   onSearchChange,
   activeColorGroups,
   onColorGroupToggle,
+  onSelectAll,
   activeGroups,
+  isDarkTheme,
 }: NotesSidebarProps) {
-  if (!isOpen) {
-    return (
-      <div className="sidebar sidebar--collapsed">
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingTitle, setEditingTitle] = useState("");
+
+  function startRename(note: Note, e: React.MouseEvent) {
+    e.stopPropagation();
+    setEditingId(note.id);
+    setEditingTitle(note.title || "");
+  }
+
+  function commitRename() {
+    if (editingId !== null) {
+      onRenameNote(editingId, editingTitle);
+      setEditingId(null);
+    }
+  }
+
+  return (
+    <div className={`sidebar${isOpen ? "" : " sidebar--collapsed"}`}>
+      {/* ── Collapsed lip ── */}
+      {!isOpen && (
         <button
-          className="sidebar-collapse-btn"
-          style={{ margin: "14px auto", display: "block" }}
+          className="sidebar-collapse-btn sidebar-lip-btn"
           onClick={onToggle}
           aria-label="Open sidebar"
         >
           ☰
         </button>
-      </div>
-    );
-  }
+      )}
 
-  return (
-    <div className="sidebar">
-      {/* ── Header: search + collapse row, then new-note button ── */}
-      <div className="sidebar-head">
-        <div className="sidebar-head-row">
-          <div className="sidebar-search">
-            <span className="sidebar-search-icon">⌕</span>
-            <input
-              className="sidebar-search-input"
-              placeholder="Search notes…"
-              value={searchQuery}
-              onChange={(e) => onSearchChange(e.target.value)}
-            />
-            {searchQuery && (
+      {/* ── Full content (hidden when collapsed) ── */}
+      {isOpen && (
+        <>
+          <div className="sidebar-head">
+            <div className="sidebar-head-row">
+              <div className="sidebar-search">
+                <span className="sidebar-search-icon">⌕</span>
+                <input
+                  className="sidebar-search-input"
+                  placeholder="Search notes…"
+                  value={searchQuery}
+                  onChange={(e) => onSearchChange(e.target.value)}
+                />
+                {searchQuery && (
+                  <button
+                    className="sidebar-search-clear"
+                    onClick={() => onSearchChange("")}
+                    aria-label="Clear search"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
               <button
-                className="sidebar-search-clear"
-                onClick={() => onSearchChange("")}
-                aria-label="Clear search"
+                className="sidebar-collapse-btn"
+                onClick={onToggle}
+                aria-label="Collapse sidebar"
               >
-                ×
+                ←
               </button>
-            )}
-          </div>
-          <button
-            className="sidebar-collapse-btn"
-            onClick={onToggle}
-            aria-label="Collapse sidebar"
-          >
-            ←
-          </button>
-        </div>
-        <button className="sidebar-btn-new" onClick={onNewNote}>
-          + New note
-        </button>
-      </div>
-
-      {/* ── Section label ── */}
-      <div className="sidebar-section">
-        <span className="sidebar-section-label">All notes</span>
-        <span className="sidebar-section-count">{notes.length}</span>
-      </div>
-
-      {/* ── Note list ── */}
-      <div className="note-list">
-        {notes.length === 0 && (
-          <div style={{ padding: "16px 14px", fontSize: 13, color: "var(--ink-4)" }}>
-            No notes yet
-          </div>
-        )}
-        {notes.map((note, idx) => (
-          <div
-            key={note.id}
-            className={`note-item${activeNoteId === note.id ? " note-item--active" : ""}`}
-            onClick={() => onSelectNote(note.id)}
-          >
-            <div
-              className="note-tab-strip"
-              style={{ background: NOTE_TAB_COLORS[idx % NOTE_TAB_COLORS.length] }}
-            />
-            <div className="note-item-body">
-              <div className="note-title-text">
-                {note.title || "Untitled"}
-              </div>
-              <div className="note-meta-text">
-                {note.content ? note.content.split("\n").filter((l) => l.trim().length > 0).length : 0} lines ·{" "}
-                {new Date(note.updated_at).toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                })}
-              </div>
             </div>
-            <button
-              className="note-delete-btn"
-              onClick={(e) => { e.stopPropagation(); onDeleteNote(note.id); }}
-              aria-label="Delete note"
-            >
-              ×
+            <button className="sidebar-btn-new" onClick={onNewNote}>
+              + New note
             </button>
           </div>
-        ))}
-      </div>
 
-      {activeGroups.length > 0 && (
-        <div className="sidebar-legend">
-          {activeGroups.map((group) => {
-            const palette = group.isSlant
-              ? RHYME_COLORS_SLANT[group.colorIndex % RHYME_COLORS_SLANT.length]
-              : RHYME_COLORS[group.colorIndex % RHYME_COLORS.length];
-            const isActive =
-              activeColorGroups === null || activeColorGroups.has(group.colorIndex);
-            return (
-              <div
-                key={`${group.colorIndex}-${group.isSlant}`}
-                className={`legend-chip${isActive ? "" : " legend-chip--dim"}`}
-                style={{ background: palette.bg, cursor: "pointer" }}
-                title={`${group.isSlant ? "Slant rhyme" : "Rhyme"}: ${group.phonemeKey}`}
-                onClick={() => onColorGroupToggle(group.colorIndex)}
-              >
-                <span className="legend-chip-label">{group.phonemeKey}</span>
+          <div className="sidebar-section">
+            <span className="sidebar-section-label">All notes</span>
+            <span className="sidebar-section-count">{notes.length}</span>
+          </div>
+
+          <div className="note-list">
+            {notes.length === 0 && (
+              <div style={{ padding: "16px 14px", fontSize: 13, color: "var(--ink-4)" }}>
+                No notes yet
               </div>
-            );
-          })}
-        </div>
+            )}
+            {notes.map((note, idx) => (
+              <div
+                key={note.id}
+                className={`note-item${activeNoteId === note.id ? " note-item--active" : ""}`}
+                onClick={() => {
+                  if (editingId !== note.id) onSelectNote(note.id);
+                }}
+              >
+                <div
+                  className="note-tab-strip"
+                  style={{ background: NOTE_TAB_COLORS[idx % NOTE_TAB_COLORS.length] }}
+                />
+                <div className="note-item-body">
+                  {editingId === note.id ? (
+                    <input
+                      className="note-title-edit"
+                      value={editingTitle}
+                      autoFocus
+                      onChange={(e) => setEditingTitle(e.target.value)}
+                      onBlur={commitRename}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") commitRename();
+                        if (e.key === "Escape") setEditingId(null);
+                        e.stopPropagation();
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  ) : (
+                    <div className="note-title-text">
+                      {note.title || "Untitled"}
+                    </div>
+                  )}
+                  <div className="note-meta-text">
+                    {note.content ? note.content.split("\n").filter((l) => l.trim().length > 0).length : 0} lines ·{" "}
+                    {new Date(note.updated_at).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                    })}
+                  </div>
+                </div>
+                <button
+                  className="note-rename-btn"
+                  onClick={(e) => startRename(note, e)}
+                  aria-label="Rename note"
+                  title="Rename"
+                >
+                  ✎
+                </button>
+                <button
+                  className="note-delete-btn"
+                  onClick={(e) => { e.stopPropagation(); onDeleteNote(note.id); }}
+                  aria-label="Delete note"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+
+          {activeGroups.length > 0 && (
+            <div className="sidebar-legend">
+              {activeGroups.map((group) => {
+                const palette = group.isSlant
+                  ? getSlantColor(group.phonemeKey, isDarkTheme)
+                  : getPhonemeColor(group.phonemeKey, isDarkTheme);
+                const isActive =
+                  activeColorGroups === null || activeColorGroups.has(group.colorIndex);
+                return (
+                  <div
+                    key={`${group.colorIndex}-${group.isSlant}`}
+                    className={`legend-chip${isActive ? "" : " legend-chip--dim"}`}
+                    style={{ background: palette.bg, cursor: "pointer" }}
+                    title={`${group.isSlant ? "Slant rhyme" : "Rhyme"}: ${group.phonemeKey}`}
+                    onClick={() => onColorGroupToggle(group.colorIndex)}
+                  >
+                    <span className="legend-chip-label">{group.phonemeKey}</span>
+                  </div>
+                );
+              })}
+
+              {/* Select/deselect-all chip — last */}
+              <div
+                className={`legend-chip legend-chip--all${activeColorGroups === null ? " legend-chip--all-active" : ""}`}
+                onClick={onSelectAll}
+                title={activeColorGroups === null ? "Deselect all" : "Select all"}
+                style={{ cursor: "pointer" }}
+              />
+            </div>
+          )}
+        </>
       )}
     </div>
   );

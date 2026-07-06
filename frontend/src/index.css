@@ -7,6 +7,7 @@
 
 /* ─── Design tokens: light theme ─── */
 :root {
+  --accent-deep: #692719;
   --bg:        #F4EFE6;
   --bg-soft:   #EBE3D5;
   --bg-deep:   #DFD5C2;
@@ -31,6 +32,7 @@
 
 /* ─── Design tokens: dark theme ─── */
 .theme-dark {
+  --accent-deep: #EAAF97;
   --bg:        #14171C;
   --bg-soft:   #1B1F26;
   --bg-deep:   #0E1116;
@@ -86,11 +88,30 @@ html, body, #root {
 }
 
 .wordmark {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink);
+}
+
+.wordmark-logo {
+  height: 28px;
+  width: auto;
+  flex-shrink: 0;
+  display: block;
+}
+
+.wordmark-text {
   font-family: var(--serif);
   font-size: 22px;
   font-weight: 500;
+  font-style: italic;
   letter-spacing: -0.01em;
   color: var(--ink);
+}
+
+.wordmark-rhy {
+  color: var(--accent);
 }
 
 .topbar-nav {
@@ -170,6 +191,8 @@ html, body, #root {
   display: grid;
   grid-template-columns: 280px 1fr 360px;
   overflow: hidden;
+  height: 100%;
+  transition: grid-template-columns 0.22s ease;
 }
 
 /* ─── Status bar (bottom footer) ─── */
@@ -187,18 +210,25 @@ html, body, #root {
 
 /* ─── Sidebar ─── */
 .sidebar {
-  width: 280px;
   background: var(--panel);
   border-right: 1px solid var(--rule);
   display: flex;
   flex-direction: column;
   height: 100%;
+  min-height: 0;
   overflow: hidden;
-  transition: width 0.2s;
+  width: 280px;
+  transition: width 0.22s ease;
 }
 
 .sidebar--collapsed {
   width: 48px;
+  align-items: center;
+}
+
+.sidebar-lip-btn {
+  margin-top: 14px;
+  display: block;
 }
 
 .sidebar-head {
@@ -381,8 +411,37 @@ html, body, #root {
   flex-shrink: 0;
 }
 
-.note-item:hover .note-delete-btn { opacity: 1; }
+.note-rename-btn {
+  align-self: center;
+  padding: 4px 5px;
+  background: none;
+  border: none;
+  color: var(--ink-4);
+  font-size: 13px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s;
+  border-radius: var(--r-sm);
+  flex-shrink: 0;
+}
+
+.note-item:hover .note-delete-btn,
+.note-item:hover .note-rename-btn { opacity: 1; }
 .note-delete-btn:hover { color: var(--accent); }
+.note-rename-btn:hover { color: var(--ink-2); }
+
+.note-title-edit {
+  width: 100%;
+  background: var(--bg-soft);
+  border: 1px solid var(--rule-2);
+  border-radius: 4px;
+  padding: 2px 5px;
+  font-family: var(--serif);
+  font-size: 14.5px;
+  color: var(--ink);
+  outline: none;
+}
+.note-title-edit:focus { border-color: var(--ink-4); }
 
 .sidebar-legend {
   display: flex;
@@ -414,12 +473,36 @@ html, body, #root {
   user-select: none;
 }
 
+.legend-chip--all {
+  background: var(--bg-deep);
+  border: 1px solid var(--rule-2);
+  position: relative;
+  cursor: pointer;
+}
+
+.legend-chip--all::after {
+  content: "✓";
+  font-size: 10px;
+  color: var(--ink-4);
+  line-height: 1;
+}
+
+.legend-chip--all-active {
+  border-color: var(--accent-2);
+}
+
+.legend-chip--all-active::after {
+  color: var(--accent-2);
+}
+
 /* ─── Editor pane ─── */
 .editor-pane {
   display: flex;
   flex-direction: column;
   overflow: hidden;
   background: var(--bg);
+  height: 100%;
+  min-height: 0;
 }
 
 .editor-header {
@@ -530,6 +613,41 @@ html, body, #root {
 .toolbar-action--primary:hover { opacity: 0.85; }
 .toolbar-action:disabled { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
 
+/* ─── Stress legend (in toolbar) ─── */
+.stress-legend {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stress-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--ink-3);
+}
+
+.stress-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex-shrink: 0;
+  display: inline-block;
+}
+
+/* ─── Mic / dictate button ─── */
+.mic-btn {
+  border: 1px solid var(--rule);
+  color: var(--ink-3);
+}
+
+.mic-btn--active {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--bg-soft);
+}
+
 /* ─── Lyric frame ─── */
 .lyric-frame {
   display: grid;
@@ -552,6 +670,8 @@ html, body, #root {
   flex-direction: column;
   align-items: flex-end;
   padding-right: 10px;
+  justify-content: flex-start;
+  padding-top: 4px;
 }
 
 .ruler-line-num {
@@ -571,6 +691,7 @@ html, body, #root {
 .lyric-body {
   position: relative;
   min-width: 0;
+  min-height: 0;
 }
 
 .lyric-body--phonemes {
@@ -600,7 +721,7 @@ html, body, #root {
 .lyric-textarea::selection { background: rgba(27,26,24,0.12); }
 .theme-dark .lyric-textarea::selection { background: rgba(236,229,210,0.15); }
 
-/* ─── Meter rail (stub) ─── */
+/* ─── Meter rail ─── */
 .meter-rail {
   display: flex;
   flex-direction: column;
@@ -610,7 +731,9 @@ html, body, #root {
 
 .meter-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
+  padding-top: 23px; /* vertically center track in first visual line */
+  position: relative;
 }
 
 .meter-bar-track {
@@ -619,6 +742,18 @@ html, body, #root {
   background: var(--rule);
   border-radius: 2px;
   overflow: hidden;
+}
+
+/* Wrapped lines: show a thin left bracket */
+.meter-row--wrapped::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 4px;
+  bottom: 4px;
+  width: 2px;
+  background: var(--rule-2);
+  border-radius: 1px;
 }
 
 /* ─── Editor footer ─── */
@@ -686,14 +821,32 @@ html, body, #root {
 
 /* ─── Rhyme panel ─── */
 .rhyme-panel {
-  width: 360px;
   background: var(--panel);
   border-left: 1px solid var(--rule);
   display: flex;
   flex-direction: column;
   height: 100%;
+  min-height: 0;
   overflow: hidden;
+  width: 100%;
 }
+
+.rhyme-panel--collapsed {
+  align-items: center;
+}
+
+.rhyme-lip-btn {
+  margin-top: 14px;
+  padding: 4px;
+  background: none;
+  border: none;
+  color: var(--ink-4);
+  font-size: 16px;
+  cursor: pointer;
+  border-radius: var(--r-sm);
+  line-height: 1;
+}
+.rhyme-lip-btn:hover { color: var(--ink-2); background: var(--bg-soft); }
 
 .rhyme-panel-head {
   padding: 14px 16px 10px;
@@ -822,6 +975,7 @@ html, body, #root {
 .rhyme-section-panel {
   border-bottom: 1px solid var(--rule);
   overflow: hidden;
+  flex-shrink: 0;
 }
 
 .rhyme-section-header {
@@ -847,6 +1001,37 @@ html, body, #root {
 
 .rhyme-section-body {
   padding: 4px 14px 10px;
+  height: 35vh;
+  min-height: 35vh;
+  max-height: 35vh;
+  overflow-y: auto;
+}
+
+.rhyme-results,
+.rhyme-section-body {
+  scrollbar-width: thin;
+  scrollbar-color: var(--ink-4) transparent;
+}
+
+.rhyme-results::-webkit-scrollbar,
+.rhyme-section-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.rhyme-results::-webkit-scrollbar-track,
+.rhyme-section-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.rhyme-results::-webkit-scrollbar-thumb,
+.rhyme-section-body::-webkit-scrollbar-thumb {
+  background: var(--rule-2);
+  border-radius: 3px;
+}
+
+.rhyme-results::-webkit-scrollbar-thumb:hover,
+.rhyme-section-body::-webkit-scrollbar-thumb:hover {
+  background: var(--ink-4);
 }
 
 .rhyme-chip-grid {
@@ -938,6 +1123,22 @@ html, body, #root {
   pointer-events: none;
   user-select: none;
   font-family: var(--mono);
+}
+
+.word-annotation[data-phonemes]:not([data-phonemes=""])::before {
+  content: attr(data-phonemes);
+  position: absolute;
+  top: -11px;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 8px;
+  line-height: 1;
+  color: var(--ink-4);
+  pointer-events: none;
+  user-select: none;
+  font-family: var(--mono);
+  letter-spacing: 0.03em;
 }
 
 /* ─── Wave 2: Rhyme mode row ─── */

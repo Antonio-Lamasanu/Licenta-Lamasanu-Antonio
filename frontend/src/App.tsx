@@ -3,12 +3,27 @@ import LyricEditor, { type LyricEditorHandle } from "./components/LyricEditor";
 import NotesSidebar from "./components/NotesSidebar";
 import RhymeDictionary from "./components/RhymeDictionary";
 import LibraryPanel from "./components/LibraryPanel";
-import VoicePanel from "./components/VoicePanel";
 import Scratchpad from "./components/Scratchpad";
 import { useAutoSave } from "./hooks/useAutoSave";
-import { fetchNotes, createNote, deleteNote, searchNotes } from "./api/notes";
+import { fetchNotes, createNote, deleteNote, updateNote, searchNotes } from "./api/notes";
 import type { Note } from "./types/note";
 import type { ActiveGroup } from "./api/syllables";
+
+function Wordmark({ isDark }: { isDark: boolean }) {
+  return (
+    <div className="wordmark">
+      <img
+        src={isDark ? "/logo-dark.png" : "/logo-light.png"}
+        alt="Rhymathic logo"
+        className="wordmark-logo"
+        aria-hidden="true"
+      />
+      <span className="wordmark-text">
+        <span className="wordmark-rhy">rhy</span>mathic
+      </span>
+    </div>
+  );
+}
 
 export default function App() {
   // ── Notes state ──
@@ -28,14 +43,14 @@ export default function App() {
   // ── Layout state ──
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [rhymePanelOpen, setRhymePanelOpen] = useState(true);
-  const [activeTab, setActiveTab] = useState<"write" | "library" | "voice">("write");
+  const [activeTab, setActiveTab] = useState<"write" | "library">("write");
 
   // ── Rhyme query + auto mode ──
   const [rhymeQuery, setRhymeQuery] = useState("");
   const [autoMode, setAutoMode] = useState(false);
   const [sidebarSearch, setSidebarSearch] = useState("");
 
-  // ── Active rhyme groups (emitted by LyricEditor after each analysis) ──
+  // ── Active rhyme groups ──
   const [activeGroups, setActiveGroups] = useState<ActiveGroup[]>([]);
   const [activeColorGroups, setActiveColorGroups] = useState<Set<number> | null>(null);
 
@@ -43,10 +58,7 @@ export default function App() {
   const [scratchpadWords, setScratchpadWords] = useState<string[]>([]);
   const [scratchpadOpen, setScratchpadOpen] = useState(false);
 
-  // ── Editor ref (for insertAtCursor from Scratchpad) ──
   const editorRef = useRef<LyricEditorHandle>(null);
-
-  // ── Layout ref (for responsive ResizeObserver) ──
   const layoutRef = useRef<HTMLDivElement>(null);
 
   // ── Effects ──
@@ -142,6 +154,18 @@ export default function App() {
     }
   }
 
+  async function handleRenameNote(id: number, title: string) {
+    const note = notes.find((n) => n.id === id);
+    if (!note) return;
+    try {
+      await updateNote(id, title, note.content);
+      setNotes((prev) => prev.map((n) => (n.id === id ? { ...n, title } : n)));
+      if (activeNoteId === id) setActiveTitle(title);
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
   function handleTitleChange(title: string) {
     setActiveTitle(title);
     if (activeNoteId !== null) {
@@ -153,15 +177,25 @@ export default function App() {
 
   function handleColorGroupToggle(index: number) {
     setActiveColorGroups((prev) => {
-      if (prev === null) return new Set([index]);
-      const next = new Set(prev);
+      const allIndices = activeGroups.map((g) => g.colorIndex);
+      // Build the current active set (null means all active)
+      const current = prev ?? new Set(allIndices);
+      const next = new Set(current);
       if (next.has(index)) {
         next.delete(index);
-        return next.size === 0 ? null : next;
+        return next;
+      } else {
+        next.add(index);
+        // If all are now selected, return null (canonical "all" state)
+        if (allIndices.every((i) => next.has(i))) return null;
+        return next;
       }
-      next.add(index);
-      return next;
     });
+  }
+
+  function handleToggleAll() {
+    // Simple binary toggle: all selected → deselect all; anything else → select all
+    setActiveColorGroups((prev) => (prev === null ? new Set<number>() : null));
   }
 
   function addToScratchpad(word: string) {
@@ -176,8 +210,7 @@ export default function App() {
   const themeIcon =
     themeMode === "dark" ? "☀" : themeMode === "light" ? "🖥" : "◑";
 
-  // Grid columns: sidebar | editor | rhyme panel (only in write tab)
-  const col3 = activeTab === "write" && rhymePanelOpen ? "360px" : "0";
+  const col3 = activeTab === "write" ? (rhymePanelOpen ? "360px" : "48px") : "0";
   const gridCols = `${sidebarOpen ? "280px" : "48px"} 1fr ${col3}`;
 
   return (
@@ -185,7 +218,7 @@ export default function App() {
       {/* ── Topbar ── */}
       <header className="topbar">
         <div className="topbar-brand">
-          <span className="wordmark">Rhymathic</span>
+          <Wordmark isDark={isDark} />
         </div>
 
         <nav className="topbar-nav">
@@ -197,23 +230,9 @@ export default function App() {
             className={`topbar-tab${activeTab === "library" ? " topbar-tab--active" : ""}`}
             onClick={() => setActiveTab("library")}
           >Library</button>
-          <button
-            className={`topbar-tab${activeTab === "voice" ? " topbar-tab--active" : ""}`}
-            onClick={() => setActiveTab("voice")}
-          >Voice</button>
         </nav>
 
         <div className="topbar-controls">
-          {activeTab === "write" && !rhymePanelOpen && (
-            <button
-              className="theme-toggle"
-              style={{ width: "auto", borderRadius: "var(--r-sm)", padding: "0 8px", fontSize: 11 }}
-              onClick={() => setRhymePanelOpen(true)}
-              aria-label="Open rhyme panel"
-            >
-              ⊞ Rhymes
-            </button>
-          )}
           <div className="save-pill">
             {saveStatus === "saving" && (
               <><span className="save-dot saving" />Saving…</>
@@ -252,13 +271,16 @@ export default function App() {
           onSelectNote={handleSelectNote}
           onNewNote={handleNewNote}
           onDeleteNote={handleDeleteNote}
+          onRenameNote={handleRenameNote}
           isOpen={sidebarOpen}
           onToggle={() => setSidebarOpen((o) => !o)}
           searchQuery={sidebarSearch}
           onSearchChange={setSidebarSearch}
           activeColorGroups={activeColorGroups}
           onColorGroupToggle={handleColorGroupToggle}
+          onSelectAll={handleToggleAll}
           activeGroups={activeGroups}
+          isDarkTheme={isDark}
         />
 
         <main className="editor-pane">
@@ -296,6 +318,7 @@ export default function App() {
 
           {activeTab === "library" && (
             <LibraryPanel
+              isDarkTheme={isDark}
               onSearchSelect={(q) => {
                 setRhymeQuery(q);
                 setActiveTab("write");
@@ -303,26 +326,17 @@ export default function App() {
               }}
             />
           )}
-
-          {activeTab === "voice" && (
-            <VoicePanel
-              onTextReady={(text) => {
-                setActiveContent((c) =>
-                  c + (c.endsWith("\n") || c === "" ? "" : "\n") + text
-                );
-                setActiveTab("write");
-              }}
-            />
-          )}
         </main>
 
-        {activeTab === "write" && rhymePanelOpen && (
+        {activeTab === "write" && (
           <RhymeDictionary
+            isOpen={rhymePanelOpen}
             query={rhymeQuery}
             onQueryChange={setRhymeQuery}
             autoMode={autoMode}
             onAutoModeToggle={() => setAutoMode((o) => !o)}
             onCollapse={() => setRhymePanelOpen(false)}
+            onExpand={() => setRhymePanelOpen(true)}
             onPin={(word) => addToScratchpad(word)}
           />
         )}
@@ -331,7 +345,7 @@ export default function App() {
       {/* ── Status bar ── */}
       <footer className="status-bar">
         <span>en-US · CMU + pyphen · Auto-save 1s</span>
-        <span>build 2026.05</span>
+        <span>build 2026.06</span>
       </footer>
 
       {/* ── Scratchpad overlay ── */}
