@@ -37,7 +37,7 @@ source venv/Scripts/activate      # Windows
 pip install -r requirements.txt
 ```
 
-Create `backend/.env`:
+Create `.env` in the repo root:
 ```
 FRONTEND_ORIGIN=http://localhost:5173
 ```
@@ -83,12 +83,12 @@ The frontend is served at [http://localhost:5173](http://localhost:5173). Nginx 
 
 ```
 rhymathic/
+├── .env                   # FRONTEND_ORIGIN (not committed)
 ├── backend/
 │   ├── main.py            # FastAPI app, all endpoints, syllabification logic
 │   ├── requirements.txt
 │   ├── Dockerfile
-│   ├── .dockerignore
-│   └── .env               # FRONTEND_ORIGIN (not committed)
+│   └── .dockerignore
 ├── frontend/
 │   ├── src/
 │   │   ├── api/           # All backend calls

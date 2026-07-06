@@ -34,6 +34,8 @@ interface LyricEditorProps {
   showStress?: boolean;
   activeColorGroups?: Set<number> | null;
   onGroupsChange?: (groups: ActiveGroup[]) => void;
+  onSendToChat?: (text: string) => void;
+  onSearchRhymes?: (text: string) => void;
 }
 
 // ── SpeechRecognition types ────────────────────────────────────────────────
@@ -96,10 +98,13 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
       showStress = false,
       activeColorGroups = null,
       onGroupsChange,
+      onSendToChat,
+      onSearchRhymes,
     }: LyricEditorProps,
     ref
   ) {
   const [counts, setCounts] = useState<number[]>([]);
+  const [selectionMenu, setSelectionMenu] = useState<{ text: string } | null>(null);
   const [syllableData, setSyllableData] = useState<SyllableInfo[][][]>([]);
   const [syllableColorMap, setSyllableColorMap] = useState<Map<string, string>>(new Map());
   const [slantColorMap, setSlantColorMap] = useState<Map<number, string>>(new Map());
@@ -385,12 +390,13 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
   ]);
 
   function handleSelectionChange() {
-    if (!onSelectionChange && !onCursorChange) return;
+    if (!onSelectionChange && !onCursorChange && !onSendToChat && !onSearchRhymes) return;
     const el = textareaRef.current;
     if (!el) return;
     const { selectionStart, selectionEnd, value } = el;
 
     if (selectionStart === selectionEnd) {
+      setSelectionMenu(null);
       onSelectionChange?.("");
       if (onCursorChange) {
         const lineStart = value.lastIndexOf("\n", selectionStart - 1) + 1;
@@ -411,10 +417,10 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
     }
 
     const selected = value.slice(selectionStart, selectionEnd);
-    if (selected.includes("\n")) return;
+    if (selected.includes("\n")) { setSelectionMenu(null); return; }
 
     let words: string[] = selected.match(/\S+/g) ?? [];
-    if (words.length === 0) return;
+    if (words.length === 0) { setSelectionMenu(null); return; }
 
     if (
       selectionStart > 0 &&
@@ -432,17 +438,43 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
       words = words.slice(0, -1);
     }
 
-    if (words.length === 0) return;
+    if (words.length === 0) { setSelectionMenu(null); return; }
     const query = words.join(" ");
-    if (query.length < 2) return;
-    if (words.length > 5) return;
+    if (query.length < 2) { setSelectionMenu(null); return; }
+    if (words.length > 5) { setSelectionMenu(null); return; }
     onSelectionChange?.(query);
+    if (onSendToChat || onSearchRhymes) setSelectionMenu({ text: query });
   }
 
   const baseLineH = parseFloat(lineHeight);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden" }}>
+    <div style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden", position: "relative" }}>
+
+      {/* ── Selection action menu ── */}
+      {selectionMenu && (onSendToChat || onSearchRhymes) && (
+        <div className="selection-action-menu">
+          <span className="selection-action-text">"{selectionMenu.text}"</span>
+          {onSendToChat && (
+            <button
+              className="selection-action-btn"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => { onSendToChat(selectionMenu.text); setSelectionMenu(null); }}
+            >
+              Send to Chat
+            </button>
+          )}
+          {onSearchRhymes && (
+            <button
+              className="selection-action-btn"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => onSearchRhymes(selectionMenu.text)}
+            >
+              Search rhymes
+            </button>
+          )}
+        </div>
+      )}
 
       {/* ── Toolbar ── */}
       <div className="editor-toolbar">

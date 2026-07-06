@@ -3,7 +3,7 @@ backend/venv/
 backend/.venv/
 backend/__pycache__/
 backend/*.pyc
-backend/.env
+/.env
 backend/notes.db
 
 # Node.js / Frontend

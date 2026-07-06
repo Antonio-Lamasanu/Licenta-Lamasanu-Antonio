@@ -3,11 +3,27 @@ import LyricEditor, { type LyricEditorHandle } from "./components/LyricEditor";
 import NotesSidebar from "./components/NotesSidebar";
 import RhymeDictionary from "./components/RhymeDictionary";
 import LibraryPanel from "./components/LibraryPanel";
+import AdminPanel from "./components/AdminPanel";
 import Scratchpad from "./components/Scratchpad";
+import ChatPanel from "./components/ChatPanel";
+import OnboardingModal from "./components/OnboardingModal";
+import PreferencesModal from "./components/PreferencesModal";
 import { useAutoSave } from "./hooks/useAutoSave";
 import { fetchNotes, createNote, deleteNote, updateNote, searchNotes } from "./api/notes";
+import { fetchScratchpad, pinScratchpadWord, unpinScratchpadWord } from "./api/scratchpad";
+import {
+  fetchChatSessions,
+  createChatSession,
+  deleteChatSession,
+  fetchChatTurns,
+  postChatTurn,
+  type ChatMode,
+  type ChatSession,
+  type ChatTurn,
+} from "./api/chat";
 import type { Note } from "./types/note";
 import type { ActiveGroup } from "./api/syllables";
+import type { User } from "./api/auth";
 
 function Wordmark({ isDark }: { isDark: boolean }) {
   return (
@@ -25,7 +41,13 @@ function Wordmark({ isDark }: { isDark: boolean }) {
   );
 }
 
-export default function App() {
+interface AppProps {
+  user: User;
+  onLogout: () => void;
+  justRegistered: boolean;
+}
+
+export default function App({ user, onLogout, justRegistered }: AppProps) {
   // ── Notes state ──
   const [notes, setNotes] = useState<Note[]>([]);
   const [activeNoteId, setActiveNoteId] = useState<number | null>(null);
@@ -43,7 +65,20 @@ export default function App() {
   // ── Layout state ──
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [rhymePanelOpen, setRhymePanelOpen] = useState(true);
-  const [activeTab, setActiveTab] = useState<"write" | "library">("write");
+  const [activeTab, setActiveTab] = useState<"write" | "library" | "chat" | "admin">("write");
+
+  // ── Chat state ──
+  const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
+  const [activeChatSessionId, setActiveChatSessionId] = useState<number | null>(null);
+  const [chatTurns, setChatTurns] = useState<ChatTurn[]>([]);
+  const [chatTurnsLoading, setChatTurnsLoading] = useState(false);
+  const [chatSending, setChatSending] = useState(false);
+  const [chatError, setChatError] = useState<string | null>(null);
+  const [chatInject, setChatInject] = useState<{ text: string; seq: number } | null>(null);
+
+  // ── Onboarding / preferences ──
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showPreferences, setShowPreferences] = useState(false);
 
   // ── Rhyme query + auto mode ──
   const [rhymeQuery, setRhymeQuery] = useState("");
@@ -108,6 +143,33 @@ export default function App() {
     }, 300);
     return () => clearTimeout(timer);
   }, [sidebarSearch]);
+
+  useEffect(() => {
+    fetchScratchpad()
+      .then((words) => setScratchpadWords(words.map((w) => w.word)))
+      .catch(console.error);
+  }, []);
+
+  useEffect(() => {
+    fetchChatSessions().then(setChatSessions).catch(console.error);
+  }, []);
+
+  useEffect(() => {
+    if (activeChatSessionId === null) {
+      setChatTurns([]);
+      return;
+    }
+    setChatTurnsLoading(true);
+    setChatError(null);
+    fetchChatTurns(activeChatSessionId)
+      .then(setChatTurns)
+      .catch(console.error)
+      .finally(() => setChatTurnsLoading(false));
+  }, [activeChatSessionId]);
+
+  useEffect(() => {
+    if (justRegistered) setShowOnboarding(true);
+  }, [justRegistered]);
 
   // ── Handlers ──
 
@@ -201,6 +263,59 @@ export default function App() {
   function addToScratchpad(word: string) {
     setScratchpadWords((prev) => (prev.includes(word) ? prev : [...prev, word]));
     setScratchpadOpen(true);
+    pinScratchpadWord(word).catch(console.error);
+  }
+
+  function removeFromScratchpad(word: string) {
+    setScratchpadWords((prev) => prev.filter((w) => w !== word));
+    unpinScratchpadWord(word).catch(console.error);
+  }
+
+  async function handleNewChatSession(mode: ChatMode) {
+    try {
+      const session = await createChatSession(mode);
+      setChatSessions((prev) => [session, ...prev]);
+      setActiveChatSessionId(session.id);
+      setActiveTab("chat");
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  async function handleDeleteChatSession(id: number) {
+    try {
+      await deleteChatSession(id);
+      setChatSessions((prev) => prev.filter((s) => s.id !== id));
+      if (activeChatSessionId === id) {
+        setActiveChatSessionId(null);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  async function handleSendChatMessage(content: string) {
+    if (activeChatSessionId === null) return;
+    setChatError(null);
+    setChatSending(true);
+    try {
+      const pair = await postChatTurn(activeChatSessionId, content);
+      setChatTurns((prev) => [...prev, pair.user_turn, pair.assistant_turn]);
+    } catch (e) {
+      setChatError(e instanceof Error ? e.message : "Failed to send message");
+    } finally {
+      setChatSending(false);
+    }
+  }
+
+  function handleSendToChat(text: string) {
+    setChatInject({ text, seq: Date.now() });
+    setActiveTab("chat");
+  }
+
+  function handleSearchRhymesFromSelection(text: string) {
+    setRhymeQuery(text);
+    setRhymePanelOpen(true);
   }
 
   const lineCount = activeContent
@@ -230,6 +345,16 @@ export default function App() {
             className={`topbar-tab${activeTab === "library" ? " topbar-tab--active" : ""}`}
             onClick={() => setActiveTab("library")}
           >Library</button>
+          <button
+            className={`topbar-tab${activeTab === "chat" ? " topbar-tab--active" : ""}`}
+            onClick={() => setActiveTab("chat")}
+          >Chat</button>
+          {user.is_admin && (
+            <button
+              className={`topbar-tab${activeTab === "admin" ? " topbar-tab--active" : ""}`}
+              onClick={() => setActiveTab("admin")}
+            >Admin</button>
+          )}
         </nav>
 
         <div className="topbar-controls">
@@ -246,6 +371,14 @@ export default function App() {
           </div>
           <button
             className="theme-toggle"
+            onClick={() => setShowPreferences(true)}
+            title="Songwriting preferences"
+            aria-label="Preferences"
+          >
+            ⚙
+          </button>
+          <button
+            className="theme-toggle"
             onClick={() =>
               setThemeMode((m) =>
                 m === "light" ? "dark" : m === "dark" ? "auto" : "light"
@@ -255,6 +388,14 @@ export default function App() {
             aria-label="Cycle theme"
           >
             {themeIcon}
+          </button>
+          <button
+            className="theme-toggle"
+            onClick={onLogout}
+            title={`Signed in as ${user.email} — click to sign out`}
+            aria-label="Sign out"
+          >
+            ⏻
           </button>
         </div>
       </header>
@@ -281,6 +422,11 @@ export default function App() {
           onSelectAll={handleToggleAll}
           activeGroups={activeGroups}
           isDarkTheme={isDark}
+          chatSessions={chatSessions}
+          activeChatSessionId={activeChatSessionId}
+          onSelectChatSession={setActiveChatSessionId}
+          onNewChatSession={handleNewChatSession}
+          onDeleteChatSession={handleDeleteChatSession}
         />
 
         <main className="editor-pane">
@@ -310,6 +456,8 @@ export default function App() {
                     isDarkTheme={isDark}
                     activeColorGroups={activeColorGroups}
                     onGroupsChange={setActiveGroups}
+                    onSendToChat={handleSendToChat}
+                    onSearchRhymes={handleSearchRhymesFromSelection}
                   />
                 </>
               )}
@@ -325,6 +473,23 @@ export default function App() {
                 setRhymePanelOpen(true);
               }}
             />
+          )}
+
+          {activeTab === "chat" && (
+            <ChatPanel
+              session={chatSessions.find((s) => s.id === activeChatSessionId) ?? null}
+              turns={chatTurns}
+              loadingTurns={chatTurnsLoading}
+              sending={chatSending}
+              error={chatError}
+              onSend={handleSendChatMessage}
+              activeNoteContent={activeContent}
+              injectText={chatInject}
+            />
+          )}
+
+          {activeTab === "admin" && user.is_admin && (
+            <AdminPanel currentUserId={user.id} />
           )}
         </main>
 
@@ -352,14 +517,20 @@ export default function App() {
       {scratchpadOpen && (
         <Scratchpad
           words={scratchpadWords}
-          onRemove={(word) =>
-            setScratchpadWords((prev) => prev.filter((w) => w !== word))
-          }
+          onRemove={removeFromScratchpad}
           onClose={() => setScratchpadOpen(false)}
           onInsert={(word) => {
             editorRef.current?.insertAtCursor(word);
           }}
         />
+      )}
+
+      {/* ── Onboarding / preferences ── */}
+      {showOnboarding && (
+        <OnboardingModal onDone={() => setShowOnboarding(false)} />
+      )}
+      {showPreferences && (
+        <PreferencesModal onClose={() => setShowPreferences(false)} />
       )}
     </div>
   );

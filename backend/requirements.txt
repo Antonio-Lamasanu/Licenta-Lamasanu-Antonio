@@ -6,3 +6,7 @@ pyphen==0.17.2
 english-words==2.0.0
 cmudict==1.0.13
 requests==2.32.3
+psycopg[binary]==3.2.10
+passlib[bcrypt]==1.7.4
+bcrypt==4.0.1
+pyjwt==2.9.0
