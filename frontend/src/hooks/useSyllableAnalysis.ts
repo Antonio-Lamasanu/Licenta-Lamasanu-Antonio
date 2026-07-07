@@ -10,7 +10,7 @@ export function useSyllableAnalysis(content: string, onGroupsChange?: (groups: A
   const [counts, setCounts] = useState<number[]>([]);
   const [syllableData, setSyllableData] = useState<SyllableInfo[][][]>([]);
   const [syllableColorMap, setSyllableColorMap] = useState<Map<string, string>>(new Map());
-  const [slantColorMap, setSlantColorMap] = useState<Map<number, string>>(new Map());
+  const [slantColorMap, setSlantColorMap] = useState<Map<string, { kind: "assonance" | "consonance"; key: string }>>(new Map());
 
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -29,10 +29,10 @@ export function useSyllableAnalysis(content: string, onGroupsChange?: (groups: A
         }
         setSyllableColorMap(map);
 
-        const slantMap = new Map<number, string>();
+        const slantMap = new Map<string, { kind: "assonance" | "consonance"; key: string }>();
         for (const group of slant_groups ?? []) {
           for (const occ of group.occurrences) {
-            slantMap.set(occ.line, group.vowel_key);
+            slantMap.set(`${occ.line}:${occ.word_index}`, { kind: group.kind, key: group.key });
           }
         }
         setSlantColorMap(slantMap);

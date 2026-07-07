@@ -14,6 +14,50 @@ VOWEL_PHONEMES = frozenset([
     'OW', 'OY', 'UH', 'UW',
 ])
 
+# Legal English syllable-onset consonant clusters (ARPAbet), used to split an
+# inter-vowel consonant run between two syllables via the maximal onset principle.
+_ONSET_CLUSTERS_3 = frozenset([
+    ('S', 'P', 'L'), ('S', 'P', 'R'), ('S', 'T', 'R'), ('S', 'K', 'R'), ('S', 'K', 'W'),
+])
+_ONSET_CLUSTERS_2 = frozenset([
+    ('P', 'L'), ('P', 'R'), ('B', 'L'), ('B', 'R'), ('T', 'R'), ('D', 'R'),
+    ('K', 'L'), ('K', 'R'), ('G', 'L'), ('G', 'R'),
+    ('F', 'L'), ('F', 'R'), ('TH', 'R'), ('SH', 'R'),
+    ('S', 'P'), ('S', 'T'), ('S', 'K'), ('S', 'M'), ('S', 'N'), ('S', 'L'), ('S', 'W'),
+    ('T', 'W'), ('D', 'W'), ('G', 'W'), ('K', 'W'),
+    ('P', 'Y'), ('B', 'Y'), ('T', 'Y'), ('D', 'Y'), ('K', 'Y'), ('G', 'Y'),
+    ('F', 'Y'), ('V', 'Y'), ('M', 'Y'), ('HH', 'Y'),
+])
+# NG never begins an English syllable, so it can only ever land in a coda.
+_ILLEGAL_SINGLE_ONSET = frozenset(['NG'])
+
+
+def _is_legal_onset(cluster: tuple[str, ...]) -> bool:
+    if len(cluster) == 0:
+        return True
+    if len(cluster) == 1:
+        return cluster[0] not in _ILLEGAL_SINGLE_ONSET
+    if len(cluster) == 2:
+        return cluster in _ONSET_CLUSTERS_2
+    if len(cluster) == 3:
+        return cluster in _ONSET_CLUSTERS_3
+    return False
+
+
+def _split_onset(run: list[str]) -> tuple[list[str], list[str]]:
+    """Split an inter-vowel consonant run into (coda of previous syllable, onset of next).
+
+    Maximal onset principle: the longest suffix of the run that is a legal English
+    onset cluster becomes the next syllable's onset; everything before it stays behind
+    as the previous syllable's coda.
+    """
+    for length in (3, 2, 1):
+        if length <= len(run):
+            suffix = tuple(run[len(run) - length:])
+            if _is_legal_onset(suffix):
+                return run[: len(run) - length], list(suffix)
+    return run, []
+
 
 def _rhyme_tail(phonemes: list[str]) -> tuple[str, ...] | None:
     """Return the rhyme-determining suffix starting from the last stressed vowel.
@@ -32,6 +76,19 @@ def _stressed_vowel(phonemes: list[str]) -> str | None:
     for i in range(len(phonemes) - 1, -1, -1):
         if phonemes[i][-1] in '12':
             return phonemes[i].rstrip('012')
+    return None
+
+
+def _coda_consonants(phonemes: list[str]) -> tuple[str, ...] | None:
+    """Trailing consonant cluster after the last vowel in the word.
+
+    None if the word ends in a vowel or has no vowel at all — used to detect
+    consonance (shared ending consonants, differing vowel) between line endings.
+    """
+    for i in range(len(phonemes) - 1, -1, -1):
+        if phonemes[i].rstrip('012') in VOWEL_PHONEMES:
+            coda = tuple(phonemes[i + 1:])
+            return coda if coda else None
     return None
 
 
@@ -138,7 +195,11 @@ def syllabify_word(word: str) -> list[SyllableInfo]:
             sub_syls = syllabify_word(part)
             if i > 0 and sub_syls:
                 # Restore the '-' separator before the first syllable of this part
-                sub_syls[0] = SyllableInfo(text='-' + sub_syls[0].text, key=sub_syls[0].key, stress=sub_syls[0].stress)
+                first = sub_syls[0]
+                sub_syls[0] = SyllableInfo(
+                    text='-' + first.text, key=first.key, stress=first.stress,
+                    onset=first.onset, coda=first.coda,
+                )
             result.extend(sub_syls)
         return result
 
@@ -147,19 +208,41 @@ def syllabify_word(word: str) -> list[SyllableInfo]:
     if not entries:
         return [SyllableInfo(text=core, key='', stress=0)]
     phonemes = entries[0]
-    vowel_phonemes_raw = [ph for ph in phonemes if ph.rstrip('012') in VOWEL_PHONEMES]
-    vowel_keys = [ph.rstrip('012') for ph in vowel_phonemes_raw]
-    stress_digits = [int(ph[-1]) if ph[-1].isdigit() else 0 for ph in vowel_phonemes_raw]
-    if not vowel_keys:
+    vowel_positions = [i for i, ph in enumerate(phonemes) if ph.rstrip('012') in VOWEL_PHONEMES]
+    if not vowel_positions:
         return [SyllableInfo(text=core, key='', stress=0)]
+    vowel_keys = [phonemes[i].rstrip('012') for i in vowel_positions]
+    stress_digits = [int(phonemes[i][-1]) if phonemes[i][-1].isdigit() else 0 for i in vowel_positions]
+
+    # Assign consonants to onsets/codas via the maximal onset principle: leading
+    # consonants go entirely to the first onset, trailing ones entirely to the last
+    # coda, and each inter-vowel run is split between the syllables it separates.
+    n = len(vowel_positions)
+    onsets: list[list[str]] = [[] for _ in range(n)]
+    codas: list[list[str]] = [[] for _ in range(n)]
+    onsets[0] = phonemes[:vowel_positions[0]]
+    for i in range(n - 1):
+        run = phonemes[vowel_positions[i] + 1: vowel_positions[i + 1]]
+        coda_part, onset_part = _split_onset(run)
+        codas[i] = coda_part
+        onsets[i + 1] = onset_part
+    codas[n - 1] = phonemes[vowel_positions[-1] + 1:]
+
     parts = _pyphen.inserted(clean).split('-')
-    if len(parts) != len(vowel_keys):
-        return [SyllableInfo(text=core, key=vowel_keys[-1], stress=stress_digits[-1])]
+    if len(parts) != n:
+        return [SyllableInfo(
+            text=core, key=vowel_keys[-1], stress=stress_digits[-1],
+            onset=' '.join(ph.rstrip('012') for ph in phonemes[:vowel_positions[-1]]),
+            coda=' '.join(ph.rstrip('012') for ph in phonemes[vowel_positions[-1] + 1:]),
+        )]
     result: list[SyllableInfo] = []
     pos = 0
     for i, part in enumerate(parts):
         syl_text = core[pos: pos + len(part)]
-        result.append(SyllableInfo(text=syl_text, key=vowel_keys[i], stress=stress_digits[i]))
+        result.append(SyllableInfo(
+            text=syl_text, key=vowel_keys[i], stress=stress_digits[i],
+            onset=' '.join(onsets[i]), coda=' '.join(codas[i]),
+        ))
         pos += len(part)
     return result
 

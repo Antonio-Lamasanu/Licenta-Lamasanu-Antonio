@@ -17,6 +17,8 @@ class SyllableInfo(BaseModel):
     text: str    # e.g. "hun"
     key: str     # vowel phoneme e.g. "AH"; empty if word not in CMU dict
     stress: int = 0  # 0=unstressed, 1=primary, 2=secondary (CMU stress digit)
+    onset: str = ""  # space-joined consonant phonemes before the vowel, e.g. "K"
+    coda: str = ""   # space-joined consonant phonemes after the vowel, e.g. "T"
 
 
 class SyllableOccurrence(BaseModel):
@@ -33,10 +35,12 @@ class SyllableGroup(BaseModel):
 
 class SlantOccurrence(BaseModel):
     line: int          # which line (0-indexed)
+    word_index: int    # which word within the line (0-indexed, whitespace-split)
 
 class SlantGroup(BaseModel):
     color_index: int   # starts after the last syllable_groups color_index
-    vowel_key: str     # the shared stressed vowel phoneme
+    kind: str           # "assonance" (shared vowel) | "consonance" (shared trailing consonants)
+    key: str            # the shared vowel phoneme (assonance) or consonant cluster (consonance)
     occurrences: list[SlantOccurrence]
 
 

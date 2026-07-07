@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, forwardRef, useImperativeHandle, useMemo, useLayoutEffect } from "react";
 import type { ActiveGroup } from "../api/syllables";
-import { getPhonemeColor, getSlantColor, phonemeToColorIndex } from "../utils/phonemeColors";
+import { getPhonemeColor, phonemeToColorIndex } from "../utils/phonemeColors";
 import type { SpeechRecognitionEvent, SpeechRecognitionInstance } from "../types/speechRecognition";
 import type { ResolvedEdit } from "../App";
 import { diffWords } from "../utils/diffWords";
@@ -276,8 +276,6 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
 
   const renderedLines = useMemo(() => {
     return lines.map((line, lineIdx) => {
-      const slantVowelKey = slantColorMap.get(lineIdx);
-
       const tokens = line.split(/(\s+)/);
       let wordIdx = 0;
 
@@ -292,6 +290,7 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
         const currentWordIdx = wordIdx++;
 
         const wordSyls = syllableData[lineIdx]?.[currentWordIdx] ?? [];
+        const slantInfo = slantColorMap.get(`${lineIdx}:${currentWordIdx}`);
 
         const sylSpans = wordSyls.map((syl, si) => {
           const phonemeKey = syllableColorMap.get(`${lineIdx}:${currentWordIdx}:${si}`);
@@ -309,11 +308,10 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
           // In stress mode, suppress rhyme coloring entirely
           if (!effectiveShowStress && phonemeKey !== undefined && !isFiltered) {
             const palette = getPhonemeColor(phonemeKey, isDarkTheme);
-            const underlineColor = isDarkTheme ? palette.bg : palette.ink;
             if (effectiveRhymeMode === "underline") {
               return (
                 <span key={si} style={{
-                  borderBottom: `4px solid ${underlineColor}`,
+                  borderBottom: `4px solid ${palette.ink}`,
                   color: "inherit",
                 }}>
                   {syl.text}
@@ -332,16 +330,18 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
             );
           }
 
-          // Slant rhyme — last syllable of last word in line (ambient, not filterable)
-          const isLastWord = currentWordIdx === (syllableData[lineIdx]?.length ?? 0) - 1;
+          // Slant rhyme — last syllable of the word (ambient, not filterable). Evaluated
+          // for every word in the document, not just line endings. Treatment is the
+          // inverse of perfect rhymes so the two never compete for the same visual
+          // channel: highlight mode fills perfect rhymes and underlines slant rhymes;
+          // underline mode underlines perfect rhymes and fills slant rhymes.
           const isLastSyl = si === wordSyls.length - 1;
-          if (!effectiveShowStress && slantVowelKey !== undefined && isLastWord && isLastSyl) {
-            const slantPalette = getSlantColor(slantVowelKey, isDarkTheme);
-            const slantUnderlineColor = isDarkTheme ? slantPalette.bg : slantPalette.ink;
-            if (effectiveRhymeMode === "underline") {
+          if (!effectiveShowStress && slantInfo !== undefined && isLastSyl) {
+            const slantPalette = getPhonemeColor(slantInfo.key, isDarkTheme);
+            if (effectiveRhymeMode === "highlight") {
               return (
                 <span key={si} style={{
-                  borderBottom: `3px dashed ${slantUnderlineColor}`,
+                  borderBottom: `4px solid ${slantPalette.ink}`,
                 }}>
                   {syl.text}
                 </span>
@@ -350,6 +350,7 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
             return (
               <span key={si} style={{
                 backgroundColor: slantPalette.bg,
+                color: slantPalette.ink,
                 borderRadius: "3px",
                 boxShadow: `0 0 0 1px ${slantPalette.bg}`,
               }}>
@@ -377,7 +378,9 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
         });
 
         const phonemeLabel = effectiveShowPhonemes
-          ? wordSyls.map((s) => s.key || "·").join("-")
+          ? wordSyls
+              .map((s) => [s.onset, s.key, s.coda].filter(Boolean).join(" ") || "·")
+              .join("-")
           : "";
 
         return (
@@ -492,6 +495,11 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
             onClick={() => setLocalRhymeMode((m) => (m === "highlight" ? "underline" : "highlight"))}
             title="Toggle rhyme highlight / underline"
           >{effectiveRhymeMode === "highlight" ? "Highlight" : "Underline"}</button>
+          <span className="toolbar-hint">
+            {effectiveRhymeMode === "highlight"
+              ? "Highlighting perfect rhymes? Underlines mark the slant ones."
+              : "Underlining perfect rhymes? Highlights mark the slant ones."}
+          </span>
         </div>
         <div className="toolbar-spacer" />
         {SpeechRecognitionClass && (

@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { Note } from "../types/note";
 import type { ActiveGroup } from "../api/syllables";
 import type { ChatSession } from "../api/chat";
-import { getPhonemeColor, getSlantColor } from "../utils/phonemeColors";
+import { getPhonemeColor } from "../utils/phonemeColors";
 import ResizableSplit from "./ResizableSplit";
 import ChatSessionsPanel from "./ChatSessionsPanel";
 
@@ -234,9 +234,7 @@ export default function NotesSidebar({
       {isOpen && editorMode === "rhymes" && activeGroups.length > 0 && (
         <div className="sidebar-legend">
           {activeGroups.map((group) => {
-            const palette = group.isSlant
-              ? getSlantColor(group.phonemeKey, isDarkTheme)
-              : getPhonemeColor(group.phonemeKey, isDarkTheme);
+            const palette = getPhonemeColor(group.phonemeKey, isDarkTheme);
             const isActive =
               activeColorGroups === null || activeColorGroups.has(group.colorIndex);
             return (

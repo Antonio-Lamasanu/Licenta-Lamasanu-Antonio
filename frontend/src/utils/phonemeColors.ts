@@ -40,13 +40,6 @@ const DARK: PaletteEntry[] = [
   { bg: "#3A1240", ink: "#E8B8F5" }, // 14 UW
 ];
 
-function withAlpha(palette: PaletteEntry[], alpha: string): PaletteEntry[] {
-  return palette.map(({ bg, ink }) => ({ bg: bg + alpha, ink }));
-}
-
-const LIGHT_SLANT = withAlpha(LIGHT, "66");
-const DARK_SLANT = withAlpha(DARK, "66");
-
 // Deterministic CMU vowel phoneme → palette slot (0–14). Every vowel gets its own hue.
 const PHONEME_COLOR_INDEX: Record<string, number> = {
   AA: 0, AE: 1, AH: 2, AO: 3, AW: 4,
@@ -60,10 +53,6 @@ export function phonemeToColorIndex(key: string): number {
 
 export function getPhonemeColor(key: string, isDark: boolean): PaletteEntry {
   return (isDark ? DARK : LIGHT)[phonemeToColorIndex(key)];
-}
-
-export function getSlantColor(key: string, isDark: boolean): PaletteEntry {
-  return (isDark ? DARK_SLANT : LIGHT_SLANT)[phonemeToColorIndex(key)];
 }
 
 export { LIGHT as PALETTE_LIGHT, DARK as PALETTE_DARK };

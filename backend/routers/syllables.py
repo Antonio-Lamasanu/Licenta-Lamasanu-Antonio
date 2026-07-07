@@ -15,6 +15,7 @@ from schemas.syllables import (
 )
 from services.syllables import (
     _cmu_lookup,
+    _coda_consonants,
     _rhyme_tail,
     _stressed_vowel,
     count_line_syllables,
@@ -67,52 +68,96 @@ def analyze(request: AnalyzeRequest) -> AnalyzeResponse:
             ))
             color_idx += 1
 
-    # --- Slant rhyme groups: lines that share a stressed vowel but not the full rhyme tail ---
-    # Operate on the last non-empty word of each line.
-    line_anchor_data: list[tuple[int, str | None, str | None]] = []
+    # --- Slant rhyme groups: assonance (shared vowel) + consonance (shared ending
+    # consonants), evaluated for every word in the document against every other word
+    # (not just line endings), each excluding words that are already a perfect rhyme
+    # with another occurrence.
+    Pos = tuple[int, int]  # (line_idx, word_idx)
+    word_anchor_data: list[tuple[Pos, str | None, str | None, str | None]] = []
     for line_idx, line in enumerate(request.lines):
-        words = [re.sub(r"[^\w']", "", w).lower() for w in line.split()]
-        words = [w for w in words if w]
-        if not words:
-            line_anchor_data.append((line_idx, None, None))
-            continue
-        anchor = words[-1]
-        prons = _cmu_lookup(anchor)
-        if not prons:
-            line_anchor_data.append((line_idx, None, None))
-            continue
-        tail_str = " ".join(_rhyme_tail(prons[0])) if _rhyme_tail(prons[0]) else None
-        vowel = _stressed_vowel(prons[0])
-        line_anchor_data.append((line_idx, vowel, tail_str))
-
-    # Group lines by stressed vowel, then exclude lines that already share the same tail
-    vowel_to_lines: dict[str, list[tuple[int, str | None]]] = {}
-    for line_idx, vowel, tail in line_anchor_data:
-        if vowel:
-            vowel_to_lines.setdefault(vowel, []).append((line_idx, tail))
+        for word_idx, raw_word in enumerate(line.split()):
+            clean = re.sub(r"[^\w']", "", raw_word).lower()
+            if not clean:
+                continue
+            prons = _cmu_lookup(clean)
+            if not prons:
+                continue
+            tail = _rhyme_tail(prons[0])
+            tail_str = " ".join(tail) if tail else None
+            vowel = _stressed_vowel(prons[0])
+            coda = _coda_consonants(prons[0])
+            coda_str = " ".join(coda) if coda else None
+            word_anchor_data.append(((line_idx, word_idx), vowel, tail_str, coda_str))
 
     slant_groups: list[SlantGroup] = []
-    for vowel, entries in vowel_to_lines.items():
+
+    # Assonance: group words by stressed vowel, then exclude words that already
+    # share the same full rhyme tail with another word (those are perfect rhymes).
+    vowel_to_words: dict[str, list[tuple[Pos, str | None]]] = {}
+    for pos, vowel, tail, _coda in word_anchor_data:
+        if vowel:
+            vowel_to_words.setdefault(vowel, []).append((pos, tail))
+
+    for vowel, entries in vowel_to_words.items():
         if len(entries) < 2:
             continue
-        # Separate by rhyme tail: lines with the same tail are perfect rhymes (skip)
-        tail_buckets: dict[str | None, list[int]] = {}
-        for line_idx, tail in entries:
-            tail_buckets.setdefault(tail, []).append(line_idx)
-        # Lines with different tails that share this vowel = slant rhyme group
-        slant_lines = [
-            line_idx
-            for tail, idxs in tail_buckets.items()
-            for line_idx in idxs
+        tail_buckets: dict[str | None, list[Pos]] = {}
+        for pos, tail in entries:
+            tail_buckets.setdefault(tail, []).append(pos)
+        # Only words whose tail bucket has no other member lack a perfect-rhyme
+        # partner in this vowel group, so only those count as slant.
+        slant_positions = [
+            pos
+            for tail, positions in tail_buckets.items()
+            if len(positions) == 1
+            for pos in positions
         ]
-        # Only include lines where not ALL are in the same perfect-rhyme tail
         unique_tails = {tail for tail, _ in entries if tail is not None}
-        if len(unique_tails) < 2:
+        if len(unique_tails) < 2 or len(slant_positions) < 2:
             continue
         slant_groups.append(SlantGroup(
             color_index=color_idx,
-            vowel_key=vowel,
-            occurrences=[SlantOccurrence(line=li) for li in sorted(set(slant_lines))],
+            kind="assonance",
+            key=vowel,
+            occurrences=[
+                SlantOccurrence(line=li, word_index=wi)
+                for li, wi in sorted(set(slant_positions))
+            ],
+        ))
+        color_idx += 1
+
+    # Consonance: group words by trailing consonant cluster, then exclude words
+    # that share both the cluster and the vowel with another word (those are already
+    # perfect rhymes). A word can carry both an assonance and a consonance
+    # relationship with different partners, so this doesn't defer to assonance_words.
+    coda_to_words: dict[str, list[tuple[Pos, str | None]]] = {}
+    for pos, vowel, _tail, coda in word_anchor_data:
+        if coda:
+            coda_to_words.setdefault(coda, []).append((pos, vowel))
+
+    for coda, entries in coda_to_words.items():
+        if len(entries) < 2:
+            continue
+        vowel_buckets: dict[str | None, list[Pos]] = {}
+        for pos, vowel in entries:
+            vowel_buckets.setdefault(vowel, []).append(pos)
+        consonance_positions = [
+            pos
+            for vowel, positions in vowel_buckets.items()
+            if len(positions) == 1
+            for pos in positions
+        ]
+        unique_vowels = {vowel for vowel, _ in entries if vowel is not None}
+        if len(unique_vowels) < 2 or len(consonance_positions) < 2:
+            continue
+        slant_groups.append(SlantGroup(
+            color_index=color_idx,
+            kind="consonance",
+            key=coda,
+            occurrences=[
+                SlantOccurrence(line=li, word_index=wi)
+                for li, wi in sorted(set(consonance_positions))
+            ],
         ))
         color_idx += 1
 

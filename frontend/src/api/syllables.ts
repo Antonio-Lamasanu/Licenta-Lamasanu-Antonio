@@ -4,6 +4,8 @@ export interface SyllableInfo {
   text: string;
   key: string;    // vowel phoneme e.g. "AH"
   stress: number; // 0=unstressed, 1=primary, 2=secondary
+  onset: string;  // consonant phonemes before the vowel, e.g. "K"
+  coda: string;   // consonant phonemes after the vowel, e.g. "T"
 }
 
 export interface SyllableOccurrence {
@@ -20,11 +22,13 @@ export interface SyllableGroup {
 
 export interface SlantOccurrence {
   line: number;
+  word_index: number;
 }
 
 export interface SlantGroup {
   color_index: number;
-  vowel_key: string;
+  kind: "assonance" | "consonance";
+  key: string;
   occurrences: SlantOccurrence[];
 }
 
