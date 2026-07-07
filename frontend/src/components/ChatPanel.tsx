@@ -21,8 +21,14 @@ interface ChatPanelProps {
   showMinimizeButton: boolean;
   onMinimize: () => void;
   editSuggestions: Map<number, EditSuggestion>;
+  userTurnDisplay: Map<number, string>;
+  assistantEditText: Map<number, string>;
+  resolvedTurnIds: Set<number>;
   onAcceptEdit: (turnId: number) => void;
   onRejectEdit: (turnId: number) => void;
+  showNoteContextHint: boolean;
+  onDismissNoteContextHint: () => void;
+  onInsertFullNote: () => void;
 }
 
 export default function ChatPanel({
@@ -38,8 +44,14 @@ export default function ChatPanel({
   showMinimizeButton,
   onMinimize,
   editSuggestions,
+  userTurnDisplay,
+  assistantEditText,
+  resolvedTurnIds,
   onAcceptEdit,
   onRejectEdit,
+  showNoteContextHint,
+  onDismissNoteContextHint,
+  onInsertFullNote,
 }: ChatPanelProps) {
   const [draft, setDraft] = useState("");
   const [openCategory, setOpenCategory] = useState<string | null>(null);
@@ -134,6 +146,20 @@ export default function ChatPanel({
     </div>
   );
 
+  const noteContextHint = showNoteContextHint && (
+    <div className="chat-context-hint">
+      <span>Tip: insert the full note first so the rewrite fits the rest of the song.</span>
+      <div className="chat-context-hint-actions">
+        <button className="chat-context-hint-btn" onClick={onInsertFullNote}>
+          Insert full note
+        </button>
+        <button className="chat-context-hint-dismiss" onClick={onDismissNoteContextHint} aria-label="Dismiss">
+          ✕
+        </button>
+      </div>
+    </div>
+  );
+
   const composer = (
     <div className="chat-composer">
       <textarea
@@ -179,6 +205,7 @@ export default function ChatPanel({
         {minimizeButton}
         <div className="chat-center-wrap">
           <div className="chat-empty">Say hello to get started.</div>
+          {noteContextHint}
           {composer}
           {categoryRow}
         </div>
@@ -194,10 +221,12 @@ export default function ChatPanel({
         {loadingTurns && <div className="chat-loading">Loading…</div>}
         {turns.map((t) => {
           const editSuggestion = editSuggestions.get(t.id);
+          const isResolvedEdit = editSuggestion && resolvedTurnIds.has(t.id);
+          const displayContent = t.role === "user" ? userTurnDisplay.get(t.id) ?? t.content : t.content;
           return (
             <div key={t.id} className={`chat-bubble chat-bubble--${t.role}`}>
               <div className="chat-bubble-role">{t.role === "user" ? "You" : "Rhymathic"}</div>
-              {editSuggestion ? (
+              {isResolvedEdit ? (
                 <>
                   <div className="chat-bubble-content edit-diff-text">
                     {diffWords(editSuggestion.original, editSuggestion.suggestion).map((tok, i) => (
@@ -225,7 +254,9 @@ export default function ChatPanel({
                 </>
               ) : (
                 <div className="chat-bubble-content">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{t.content}</ReactMarkdown>
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {assistantEditText.get(t.id) ?? displayContent}
+                  </ReactMarkdown>
                 </div>
               )}
             </div>
@@ -260,6 +291,7 @@ export default function ChatPanel({
       {error && <div className="chat-error">{error}</div>}
 
       {categoryRow}
+      {noteContextHint}
       {composer}
     </div>
   );

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import LyricEditor, { type LyricEditorHandle } from "./components/LyricEditor";
 import NotesSidebar from "./components/NotesSidebar";
 import RhymeDictionary from "./components/RhymeDictionary";
@@ -19,6 +19,7 @@ import {
   fetchChatSessions,
   createChatSession,
   deleteChatSession,
+  renameChatSession,
   fetchChatTurns,
   streamChatTurn,
   type ChatSession,
@@ -27,6 +28,8 @@ import {
 import type { Note } from "./types/note";
 import type { ActiveGroup } from "./api/syllables";
 import type { User } from "./api/auth";
+import { locateEditRange } from "./utils/editRange";
+import { buildEditDisplayPrompt, buildEditWirePrompt, extractRewrite } from "./utils/editMarkers";
 
 function Wordmark({ isDark }: { isDark: boolean }) {
   return (
@@ -55,11 +58,27 @@ interface PendingSelectionEdit {
   start: number;
   end: number;
   original: string;
-  prompt: string;
+  displayPrompt: string;
+}
+
+interface ActiveEditContext {
+  sessionId: number;
+  noteId: number;
+  start: number;
+  end: number;
+  original: string;
 }
 
 export interface EditSuggestion {
   noteId: number;
+  start: number;
+  end: number;
+  original: string;
+  suggestion: string;
+}
+
+export interface ResolvedEdit {
+  turnId: number;
   start: number;
   end: number;
   original: string;
@@ -98,7 +117,18 @@ export default function App({ user, onLogout, justRegistered }: AppProps) {
   const [chatError, setChatError] = useState<string | null>(null);
   const [chatInject, setChatInject] = useState<{ text: string; seq: number } | null>(null);
   const [editSuggestions, setEditSuggestions] = useState<Map<number, EditSuggestion>>(new Map());
+  const [userTurnDisplay, setUserTurnDisplay] = useState<Map<number, string>>(new Map());
+  // Extracted rewrite text per assistant turn - kept forever (unlike editSuggestions,
+  // which is cleared on accept/reject/staleness) so the bubble can always fall back to
+  // clean copy-pasteable text instead of the raw <<<REWRITE>>> markers.
+  const [assistantEditText, setAssistantEditText] = useState<Map<number, string>>(new Map());
   const pendingEditRef = useRef<PendingSelectionEdit | null>(null);
+  const activeEditContextRef = useRef<ActiveEditContext | null>(null);
+  // Sessions that have had the full note pasted in at least once - used only to decide
+  // whether to show a soft "insert full note" hint before a "Change this" request, never
+  // to block sending.
+  const [noteContextSessions, setNoteContextSessions] = useState<Set<number>>(new Set());
+  const [noteContextHint, setNoteContextHint] = useState(false);
 
   // ── Onboarding / preferences ──
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -364,22 +394,58 @@ export default function App({ user, onLogout, justRegistered }: AppProps) {
     }
   }
 
+  async function handleRenameChatSession(id: number, title: string) {
+    try {
+      const session = await renameChatSession(id, title);
+      setChatSessions((prev) => prev.map((s) => (s.id === id ? session : s)));
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
   async function handleSendChatMessage(content: string) {
     if (activeChatSessionId === null) return;
     const sessionId = activeChatSessionId;
-    // Only treat this as an edit-suggestion request if the sent text is exactly what
-    // "Change this" generated - if the user edited or replaced it, send as a normal message.
-    const editMeta = pendingEditRef.current?.prompt === content ? pendingEditRef.current : null;
+    // Treat this as an edit-suggestion request if the sent text still starts with what
+    // "Change this" generated - if the user deleted/replaced that part, send as a normal
+    // message. Anything appended after it (e.g. a pasted-in full note via "Insert full
+    // note") is passed through as extra context rather than breaking detection.
+    const pending = pendingEditRef.current;
+    const editMeta =
+      pending && content.trim().startsWith(pending.displayPrompt.trim()) ? pending : null;
     pendingEditRef.current = null;
+    const displayText = content;
+    const extraContext = editMeta
+      ? content.trim().slice(editMeta.displayPrompt.trim().length).trim() || undefined
+      : undefined;
+    const wireContent = editMeta ? buildEditWirePrompt(editMeta.original, extraContext) : content;
     setChatError(null);
     setChatSending(true);
-    setChatPendingUserText(content);
+    setChatPendingUserText(displayText);
     setChatStreamingText("");
+    setNoteContextHint(false);
     try {
-      await streamChatTurn(sessionId, content, {
+      await streamChatTurn(sessionId, wireContent, {
         onUserTurn: (turn) => {
           setChatTurns((prev) => [...prev, turn]);
           setChatPendingUserText(null);
+          if (displayText.includes("Full note:\n")) {
+            setNoteContextSessions((prev) => new Set(prev).add(sessionId));
+          }
+          if (editMeta) {
+            setUserTurnDisplay((prev) => {
+              const next = new Map(prev);
+              next.set(turn.id, displayText);
+              return next;
+            });
+            activeEditContextRef.current = {
+              sessionId,
+              noteId: editMeta.noteId,
+              start: editMeta.start,
+              end: editMeta.end,
+              original: editMeta.original,
+            };
+          }
         },
         onDelta: (text) => {
           setChatStreamingText((prev) => (prev ?? "") + text);
@@ -392,18 +458,30 @@ export default function App({ user, onLogout, justRegistered }: AppProps) {
               prev.map((s) => (s.id === sessionId ? { ...s, title: sessionTitle } : s))
             );
           }
-          if (editMeta) {
-            setEditSuggestions((prev) => {
-              const next = new Map(prev);
-              next.set(assistantTurn.id, {
-                noteId: editMeta.noteId,
-                start: editMeta.start,
-                end: editMeta.end,
-                original: editMeta.original,
-                suggestion: assistantTurn.content,
+          const ctx = activeEditContextRef.current;
+          if (ctx && ctx.sessionId === sessionId) {
+            const rewrite = extractRewrite(assistantTurn.content);
+            if (rewrite !== null) {
+              setAssistantEditText((prev) => {
+                const next = new Map(prev);
+                next.set(assistantTurn.id, rewrite);
+                return next;
               });
-              return next;
-            });
+              setEditSuggestions((prev) => {
+                const next = new Map(prev);
+                next.set(assistantTurn.id, {
+                  noteId: ctx.noteId,
+                  start: ctx.start,
+                  end: ctx.end,
+                  original: ctx.original,
+                  suggestion: rewrite,
+                });
+                return next;
+              });
+              activeEditContextRef.current = null;
+            }
+            // No markers found (e.g. the model asked a clarifying question) - leave the
+            // context active so a later reply in this thread can still be picked up.
           }
         },
       });
@@ -419,21 +497,20 @@ export default function App({ user, onLogout, justRegistered }: AppProps) {
   async function handleChangeThisRequest(text: string, start: number, end: number) {
     if (activeNoteId === null) return;
     const noteId = activeNoteId;
-    const prompt = `Rewrite this to be better. Reply with ONLY the rewritten text, no explanation:\n\n"${text}"`;
-    pendingEditRef.current = { noteId, start, end, original: text, prompt };
-    await injectIntoChat(prompt);
+    const displayPrompt = buildEditDisplayPrompt(text);
+    pendingEditRef.current = { noteId, start, end, original: text, displayPrompt };
+    const sessionId = await injectIntoChat(displayPrompt);
+    if (sessionId !== null && !noteContextSessions.has(sessionId)) {
+      setNoteContextHint(true);
+    }
   }
 
   function handleAcceptEditSuggestion(turnId: number) {
     const meta = editSuggestions.get(turnId);
     if (!meta || meta.noteId !== activeNoteId) return;
-    let { start, end } = meta;
-    if (activeContent.slice(start, end) !== meta.original) {
-      const idx = activeContent.indexOf(meta.original);
-      if (idx === -1) return;
-      start = idx;
-      end = idx + meta.original.length;
-    }
+    const range = locateEditRange(activeContent, meta);
+    if (!range) return;
+    const [start, end] = range;
     if (activeTab === "write" && editorRef.current) {
       editorRef.current.replaceRange(start, end, meta.suggestion);
     } else {
@@ -454,7 +531,7 @@ export default function App({ user, onLogout, justRegistered }: AppProps) {
     });
   }
 
-  async function injectIntoChat(text: string, label?: string) {
+  async function injectIntoChat(text: string, label?: string): Promise<number | null> {
     let sessionId = activeChatSessionId;
     if (sessionId === null) {
       try {
@@ -464,7 +541,7 @@ export default function App({ user, onLogout, justRegistered }: AppProps) {
         setActiveChatSessionId(sessionId);
       } catch (e) {
         console.error(e);
-        return;
+        return null;
       }
     }
     const injected = label ? `${label}:\n${text}` : text;
@@ -472,7 +549,23 @@ export default function App({ user, onLogout, justRegistered }: AppProps) {
     if (activeTab !== "chat" && chatDock.mode === "closed") {
       chatDockCtl.openFloating();
     }
+    return sessionId;
   }
+
+  // Edit suggestions currently anchored in the active note's content - recomputed
+  // live so a stale/moved anchor (note switched away and edited, range no longer
+  // found) simply stops rendering, rather than needing explicit invalidation.
+  const resolvedEdits: ResolvedEdit[] = useMemo(() => {
+    const out: ResolvedEdit[] = [];
+    for (const [turnId, meta] of editSuggestions) {
+      if (meta.noteId !== activeNoteId) continue;
+      const range = locateEditRange(activeContent, meta);
+      if (!range) continue;
+      out.push({ turnId, start: range[0], end: range[1], original: meta.original, suggestion: meta.suggestion });
+    }
+    return out;
+  }, [editSuggestions, activeContent, activeNoteId]);
+  const resolvedTurnIds = useMemo(() => new Set(resolvedEdits.map((e) => e.turnId)), [resolvedEdits]);
 
   const lineCount = activeContent
     ? activeContent.split("\n").filter((l) => l.trim().length > 0).length
@@ -502,8 +595,17 @@ export default function App({ user, onLogout, justRegistered }: AppProps) {
         showMinimizeButton={showMinimize}
         onMinimize={() => switchTab("write")}
         editSuggestions={editSuggestions}
+        userTurnDisplay={userTurnDisplay}
+        assistantEditText={assistantEditText}
+        resolvedTurnIds={resolvedTurnIds}
         onAcceptEdit={handleAcceptEditSuggestion}
         onRejectEdit={handleRejectEditSuggestion}
+        showNoteContextHint={noteContextHint}
+        onDismissNoteContextHint={() => setNoteContextHint(false)}
+        onInsertFullNote={() => {
+          setNoteContextHint(false);
+          void injectIntoChat(activeContent, "Full note");
+        }}
       />
     );
   }
@@ -556,6 +658,9 @@ export default function App({ user, onLogout, justRegistered }: AppProps) {
                 onModeChange={setEditorMode}
                 onSendToChat={injectIntoChat}
                 onChangeThis={handleChangeThisRequest}
+                activeEdits={resolvedEdits}
+                onAcceptEdit={handleAcceptEditSuggestion}
+                onRejectEdit={handleRejectEditSuggestion}
               />
             </>
           )}
@@ -694,6 +799,7 @@ export default function App({ user, onLogout, justRegistered }: AppProps) {
           onSelectChatSession={openChatSession}
           onNewChatSession={handleNewChatSession}
           onDeleteChatSession={handleDeleteChatSession}
+          onRenameChatSession={handleRenameChatSession}
         />
 
         <main className="editor-pane" ref={mainAreaRef}>

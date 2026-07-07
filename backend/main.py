@@ -437,6 +437,10 @@ class ChatSessionOut(BaseModel):
     created_at: datetime
 
 
+class ChatSessionRename(BaseModel):
+    title: str
+
+
 class ChatTurnOut(BaseModel):
     id: int
     session_id: int
@@ -1213,6 +1217,21 @@ def create_chat_session(body: ChatSessionCreate, current_user: dict = Depends(ge
             (current_user["id"], body.note_id),
         ).fetchone()
         conn.commit()
+        return ChatSessionOut(**row)
+
+
+@app.put("/api/chat-sessions/{session_id}", response_model=ChatSessionOut)
+def rename_chat_session(session_id: int, body: ChatSessionRename, current_user: dict = Depends(get_current_user)):
+    for conn in get_db():
+        row = conn.execute(
+            """UPDATE chat_sessions SET title = %s
+               WHERE id = %s AND user_id = %s
+               RETURNING id, note_id, title, created_at""",
+            (body.title.strip() or None, session_id, current_user["id"]),
+        ).fetchone()
+        conn.commit()
+        if not row:
+            raise HTTPException(status_code=404, detail="Chat session not found")
         return ChatSessionOut(**row)
 
 

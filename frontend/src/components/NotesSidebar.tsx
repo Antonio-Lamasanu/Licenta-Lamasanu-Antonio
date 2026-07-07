@@ -28,6 +28,7 @@ interface NotesSidebarProps {
   onSelectChatSession: (id: number) => void;
   onNewChatSession: () => void;
   onDeleteChatSession: (id: number) => void;
+  onRenameChatSession: (id: number, title: string) => void;
 }
 
 const NOTE_TAB_COLORS = [
@@ -57,6 +58,7 @@ export default function NotesSidebar({
   onSelectChatSession,
   onNewChatSession,
   onDeleteChatSession,
+  onRenameChatSession,
 }: NotesSidebarProps) {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editingTitle, setEditingTitle] = useState("");
@@ -204,6 +206,7 @@ export default function NotesSidebar({
               onSelect={onSelectChatSession}
               onCreate={onNewChatSession}
               onDelete={onDeleteChatSession}
+              onRename={onRenameChatSession}
             />
           }
         />

@@ -54,6 +54,16 @@ export async function createChatSession(noteId?: number | null): Promise<ChatSes
   return res.json() as Promise<ChatSession>;
 }
 
+export async function renameChatSession(id: number, title: string): Promise<ChatSession> {
+  const res = await apiFetch(`/api/chat-sessions/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ title }),
+  });
+  if (!res.ok) return extractError(res, `Chat sessions API error: ${res.status}`);
+  return res.json() as Promise<ChatSession>;
+}
+
 export async function deleteChatSession(id: number): Promise<void> {
   const res = await apiFetch(`/api/chat-sessions/${id}`, { method: "DELETE" });
   if (!res.ok) return extractError(res, `Chat sessions API error: ${res.status}`);

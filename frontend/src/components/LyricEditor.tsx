@@ -2,6 +2,8 @@ import { useState, useEffect, useRef, useCallback, forwardRef, useImperativeHand
 import { fetchAnalysis, type SyllableInfo, type ActiveGroup } from "../api/syllables";
 import { phonemeToColorIndex, getPhonemeColor, getSlantColor } from "../utils/phonemeColors";
 import type { SpeechRecognitionEvent, SpeechRecognitionInstance } from "../types/speechRecognition";
+import type { ResolvedEdit } from "../App";
+import { diffWords } from "../utils/diffWords";
 import { MicIcon } from "./icons";
 
 const RHYME_WORD_CAP = 5;
@@ -41,6 +43,9 @@ interface LyricEditorProps {
   onModeChange?: (mode: "rhymes" | "stress") => void;
   onSendToChat?: (text: string) => void;
   onChangeThis?: (text: string, start: number, end: number) => void;
+  activeEdits?: ResolvedEdit[];
+  onAcceptEdit?: (turnId: number) => void;
+  onRejectEdit?: (turnId: number) => void;
 }
 
 const SpeechRecognitionClass =
@@ -62,6 +67,9 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
       onModeChange,
       onSendToChat,
       onChangeThis,
+      activeEdits = [],
+      onAcceptEdit,
+      onRejectEdit,
     }: LyricEditorProps,
     ref
   ) {
@@ -243,6 +251,45 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
 
   const lines = useMemo(() => renderContent.split("\n"), [renderContent]);
 
+  // "Change this" selections never span multiple lines (see handleSelectionChange),
+  // so each active edit maps to exactly one line for the inline diff overlay.
+  const activeEditsByLine = useMemo(() => {
+    const map = new Map<
+      number,
+      { turnId: number; startInLine: number; endInLine: number; original: string; suggestion: string }
+    >();
+    for (const edit of activeEdits) {
+      const before = content.slice(0, edit.start);
+      const lineStart = before.lastIndexOf("\n") + 1;
+      const lineIdx = (before.match(/\n/g) ?? []).length;
+      map.set(lineIdx, {
+        turnId: edit.turnId,
+        startInLine: edit.start - lineStart,
+        endInLine: edit.end - lineStart,
+        original: edit.original,
+        suggestion: edit.suggestion,
+      });
+    }
+    return map;
+  }, [activeEdits, content]);
+
+  // Accept/Reject for the inline diff must live outside the mirror div (which is
+  // pointer-events:none so the textarea on top of it can capture typing/selection),
+  // so they're rendered as a floating overlay positioned off the line's real DOM rect.
+  const [editButtonPositions, setEditButtonPositions] = useState<Map<number, { top: number; left: number }>>(new Map());
+  useLayoutEffect(() => {
+    const wrapperRect = wrapperRef.current?.getBoundingClientRect();
+    if (!wrapperRect) return;
+    const next = new Map<number, { top: number; left: number }>();
+    for (const [lineIdx, edit] of activeEditsByLine) {
+      const lineEl = lineRefs.current[lineIdx];
+      if (!lineEl) continue;
+      const rect = lineEl.getBoundingClientRect();
+      next.set(edit.turnId, { top: rect.top - wrapperRect.top, left: rect.right - wrapperRect.left + 12 });
+    }
+    setEditButtonPositions(next);
+  }, [activeEditsByLine, lineHeights, renderContent]);
+
   const renderedLines = useMemo(() => {
     return lines.map((line, lineIdx) => {
       const slantVowelKey = slantColorMap.get(lineIdx);
@@ -418,7 +465,14 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
     if (!onSelectionChange && !onCursorChange && !onSendToChat) return;
     const el = textareaRef.current;
     if (!el) return;
-    const { selectionStart, selectionEnd, value } = el;
+    const { selectionStart, value } = el;
+    let { selectionEnd } = el;
+    // Triple-click (and the new per-line select button) typically extends the
+    // selection through the line's trailing newline - trim it so a whole-line
+    // selection isn't mistaken for a genuine multi-line one below.
+    if (selectionEnd > selectionStart && value[selectionEnd - 1] === "\n") {
+      selectionEnd -= 1;
+    }
 
     if (selectionStart === selectionEnd) {
       setSelectionMenu(null);
@@ -491,10 +545,52 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
     onChangeThis?.(text, start, end);
   }
 
+  // Selects a whole line by index and opens the same selection-action menu that a
+  // manual click-drag or triple-click would - avoids relying on browser selection
+  // quirks (like triple-click's inconsistent handling of the trailing newline) for
+  // the common "act on this whole line" case.
+  function handleSelectLine(lineIdx: number) {
+    const el = textareaRef.current;
+    if (!el) return;
+    const allLines = el.value.split("\n");
+    if (lineIdx >= allLines.length) return;
+    let start = 0;
+    for (let i = 0; i < lineIdx; i++) start += allLines[i].length + 1;
+    const end = start + allLines[lineIdx].length;
+    if (start === end) return;
+    el.focus();
+    el.setSelectionRange(start, end);
+    handleSelectionChange();
+  }
+
   const baseLineH = parseFloat(lineHeight);
 
   return (
     <div ref={wrapperRef} style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden", position: "relative" }}>
+
+      {/* ── Inline edit Accept/Reject (floating above the mirror, which is pointer-events:none) ── */}
+      {activeEdits.map((edit) => {
+        const pos = editButtonPositions.get(edit.turnId);
+        if (!pos) return null;
+        return (
+          <div key={edit.turnId} className="inline-edit-actions-float" style={{ top: pos.top, left: pos.left }}>
+            <button
+              className="selection-action-btn"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => onRejectEdit?.(edit.turnId)}
+            >
+              Reject
+            </button>
+            <button
+              className="selection-action-btn selection-action-btn--primary"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => onAcceptEdit?.(edit.turnId)}
+            >
+              Accept
+            </button>
+          </div>
+        );
+      })}
 
       {/* ── Selection action menu ── */}
       {selectionMenu && onSendToChat && (
@@ -576,12 +672,26 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
 
         {/* Ruler */}
         <div className="lyric-ruler">
-          {lines.map((_, i) => {
+          {lines.map((line, i) => {
             const h = lineHeights[i] ?? baseLineH;
             return (
               <div key={i} className="ruler-row" style={{ height: h, lineHeight: `${baseLineH}px` }}>
-                <span className="ruler-line-num">{i + 1}</span>
-                <span className="ruler-syl-count">{counts[i] ?? ""}</span>
+                {(onSendToChat || onChangeThis) && line.trim().length > 0 && (
+                  <button
+                    type="button"
+                    className="line-select-btn"
+                    title="Select this line"
+                    aria-label={`Select line ${i + 1}`}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => handleSelectLine(i)}
+                  >
+                    ✨
+                  </button>
+                )}
+                <div className="ruler-nums">
+                  <span className="ruler-line-num">{i + 1}</span>
+                  <span className="ruler-syl-count">{counts[i] ?? ""}</span>
+                </div>
               </div>
             );
           })}
@@ -599,15 +709,38 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
             }}
             aria-hidden="true"
           >
-            {renderedLines.map((rendered, lineIdx) => (
-              <div
-                key={lineIdx}
-                ref={el => { lineRefs.current[lineIdx] = el; }}
-                style={{ lineHeight, minHeight: lineHeight }}
-              >
-                {rendered}
-              </div>
-            ))}
+            {renderedLines.map((rendered, lineIdx) => {
+              const edit = activeEditsByLine.get(lineIdx);
+              const lineText = lines[lineIdx] ?? "";
+              return (
+                <div
+                  key={lineIdx}
+                  ref={el => { lineRefs.current[lineIdx] = el; }}
+                  style={{ lineHeight, minHeight: lineHeight }}
+                >
+                  {edit ? (
+                    <>
+                      {lineText.slice(0, edit.startInLine)}
+                      <span className="inline-edit-diff">
+                        {diffWords(edit.original, edit.suggestion).map((tok, i) => (
+                          <span
+                            key={i}
+                            className={
+                              tok.kind === "removed" ? "diff-removed" : tok.kind === "added" ? "diff-added" : undefined
+                            }
+                          >
+                            {tok.text}
+                          </span>
+                        ))}
+                      </span>
+                      {lineText.slice(edit.endInLine)}
+                    </>
+                  ) : (
+                    rendered
+                  )}
+                </div>
+              );
+            })}
           </div>
           <textarea
             ref={textareaRef}
