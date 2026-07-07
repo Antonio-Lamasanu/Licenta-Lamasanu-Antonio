@@ -15,8 +15,9 @@ interface ChatPanelProps {
   streamingText: string | null;
   error: string | null;
   onSend: (content: string) => void;
-  activeNoteContent: string;
   injectText: { text: string; seq: number } | null;
+  showMinimizeButton: boolean;
+  onMinimize: () => void;
 }
 
 export default function ChatPanel({
@@ -28,8 +29,9 @@ export default function ChatPanel({
   streamingText,
   error,
   onSend,
-  activeNoteContent,
   injectText,
+  showMinimizeButton,
+  onMinimize,
 }: ChatPanelProps) {
   const [draft, setDraft] = useState("");
   const [openCategory, setOpenCategory] = useState<string | null>(null);
@@ -68,11 +70,6 @@ export default function ChatPanel({
       e.preventDefault();
       handleSend();
     }
-  }
-
-  function insertNote() {
-    if (!activeNoteContent) return;
-    appendToDraft(activeNoteContent);
   }
 
   if (!session) {
@@ -114,14 +111,6 @@ export default function ChatPanel({
           )}
         </div>
       ))}
-      <button
-        className="chat-shortcut-btn chat-shortcut-btn--insert"
-        onClick={insertNote}
-        disabled={!activeNoteContent}
-        title={activeNoteContent ? "Paste the current note into the message box" : "No active note"}
-      >
-        Insert full note
-      </button>
     </div>
   );
 
@@ -130,7 +119,7 @@ export default function ChatPanel({
       <textarea
         ref={textareaRef}
         className="chat-composer-input"
-        placeholder="Write a message… (Enter to send, Shift+Enter for a new line)"
+        placeholder="Write a message…"
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
         onKeyDown={handleKeyDown}
@@ -153,9 +142,21 @@ export default function ChatPanel({
     </div>
   );
 
+  const minimizeButton = showMinimizeButton && (
+    <button
+      className="chat-minimize-btn"
+      onClick={onMinimize}
+      title="Minimize to mini-window"
+      aria-label="Minimize chat to mini-window"
+    >
+      ⧉ Mini-window
+    </button>
+  );
+
   if (isEmpty) {
     return (
       <div className="chat-panel chat-panel--centered">
+        {minimizeButton}
         <div className="chat-center-wrap">
           <div className="chat-empty">Say hello to get started.</div>
           {composer}
@@ -168,6 +169,7 @@ export default function ChatPanel({
 
   return (
     <div className="chat-panel">
+      {minimizeButton}
       <div className="chat-thread" ref={threadRef}>
         {loadingTurns && <div className="chat-loading">Loading…</div>}
         {turns.map((t) => (

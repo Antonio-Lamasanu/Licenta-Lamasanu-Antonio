@@ -194,7 +194,7 @@ export default function App({ user, onLogout, justRegistered }: AppProps) {
     setLastSaved(note.title, note.content);
     setActiveColorGroups(null);
     titleIsManual.current = note.title.trim() !== "";
-    setActiveTab("write");
+    switchTab("write");
   }
 
   async function handleNewNote() {
@@ -307,12 +307,28 @@ export default function App({ user, onLogout, justRegistered }: AppProps) {
     unpinScratchpadWord(word).catch(console.error);
   }
 
+  function switchTab(tab: "write" | "library" | "chat" | "admin") {
+    if (tab === activeTab) return;
+    if (tab === "chat") {
+      if (chatDock.mode !== "closed") chatDockCtl.close();
+    } else if (activeTab === "chat" && activeChatSessionId !== null && chatDock.mode === "closed") {
+      chatDockCtl.openFloating();
+    }
+    setActiveTab(tab);
+  }
+
+  function openChatSession(id: number) {
+    setActiveChatSessionId(id);
+    if (activeTab !== "chat" && chatDock.mode === "closed") {
+      chatDockCtl.openFloating();
+    }
+  }
+
   async function handleNewChatSession() {
     try {
       const session = await createChatSession();
       setChatSessions((prev) => [session, ...prev]);
-      setActiveChatSessionId(session.id);
-      setActiveTab("chat");
+      openChatSession(session.id);
     } catch (e) {
       console.error(e);
     }
@@ -365,14 +381,23 @@ export default function App({ user, onLogout, justRegistered }: AppProps) {
     }
   }
 
-  function handleSendToChat(text: string) {
+  async function injectIntoChat(text: string) {
+    let sessionId = activeChatSessionId;
+    if (sessionId === null) {
+      try {
+        const session = await createChatSession();
+        setChatSessions((prev) => [session, ...prev]);
+        sessionId = session.id;
+        setActiveChatSessionId(sessionId);
+      } catch (e) {
+        console.error(e);
+        return;
+      }
+    }
     setChatInject({ text, seq: Date.now() });
-    setActiveTab("chat");
-  }
-
-  function handleSearchRhymesFromSelection(text: string) {
-    setRhymeQuery(text);
-    setRhymePanelOpen(true);
+    if (activeTab !== "chat" && chatDock.mode === "closed") {
+      chatDockCtl.openFloating();
+    }
   }
 
   const lineCount = activeContent
@@ -382,30 +407,35 @@ export default function App({ user, onLogout, justRegistered }: AppProps) {
   const themeIcon =
     themeMode === "dark" ? "☀" : themeMode === "light" ? "🖥" : "◑";
 
-  const rightColumnVisible = (activeTab === "write" && rhymePanelOpen) || chatDock.mode === "side";
+  const dockedInMain = chatDock.mode === "main" && activeTab !== "chat";
+  const dockedInSide = chatDock.mode === "side" && activeTab !== "chat";
+  const rightColumnVisible = (activeTab === "write" && rhymePanelOpen) || dockedInSide;
   const col3 = rightColumnVisible ? "360px" : activeTab === "write" ? "48px" : "0";
   const gridCols = `${sidebarOpen ? "280px" : "48px"} 1fr ${col3}`;
 
-  const chatBodyNode = (
-    <ChatPanel
-      session={chatSessions.find((s) => s.id === activeChatSessionId) ?? null}
-      turns={chatTurns}
-      loadingTurns={chatTurnsLoading}
-      sending={chatSending}
-      pendingUserText={chatPendingUserText}
-      streamingText={chatStreamingText}
-      error={chatError}
-      onSend={handleSendChatMessage}
-      activeNoteContent={activeContent}
-      injectText={chatInject}
-    />
-  );
+  function renderChatPanel(showMinimize: boolean) {
+    return (
+      <ChatPanel
+        session={chatSessions.find((s) => s.id === activeChatSessionId) ?? null}
+        turns={chatTurns}
+        loadingTurns={chatTurnsLoading}
+        sending={chatSending}
+        pendingUserText={chatPendingUserText}
+        streamingText={chatStreamingText}
+        error={chatError}
+        onSend={handleSendChatMessage}
+        injectText={chatInject}
+        showMinimizeButton={showMinimize}
+        onMinimize={() => switchTab("write")}
+      />
+    );
+  }
 
   function renderDockedChatPane() {
     return (
       <div className="chat-dock-pane">
         <ChatDockHeader onDragStart={chatDockCtl.startDrag} onClose={chatDockCtl.close} />
-        <div className="chat-dock-pane-body">{chatBodyNode}</div>
+        <div className="chat-dock-pane-body">{renderChatPanel(false)}</div>
       </div>
     );
   }
@@ -428,19 +458,26 @@ export default function App({ user, onLogout, justRegistered }: AppProps) {
                 <div className="editor-meta">
                   draft · {lineCount} {lineCount === 1 ? "line" : "lines"}
                 </div>
+                <button
+                  className="editor-meta-btn"
+                  onClick={() => injectIntoChat(activeContent)}
+                  disabled={!activeContent}
+                  title="Insert this note into the current chat"
+                >
+                  Insert into Chat
+                </button>
               </div>
               <LyricEditor
                 ref={editorRef}
                 content={activeContent}
                 onContentChange={handleContentChange}
-                onSelectionChange={(q) => { if (!autoMode) setRhymeQuery(q); }}
+                onSelectionChange={(q) => { if (q) setRhymeQuery(q); }}
                 onCursorChange={(q) => { if (autoMode) setRhymeQuery(q); }}
                 isDarkTheme={isDark}
                 activeColorGroups={activeColorGroups}
                 onGroupsChange={setActiveGroups}
                 onModeChange={setEditorMode}
-                onSendToChat={handleSendToChat}
-                onSearchRhymes={handleSearchRhymesFromSelection}
+                onSendToChat={injectIntoChat}
               />
             </>
           )}
@@ -452,13 +489,13 @@ export default function App({ user, onLogout, justRegistered }: AppProps) {
           isDarkTheme={isDark}
           onSearchSelect={(q) => {
             setRhymeQuery(q);
-            setActiveTab("write");
+            switchTab("write");
             setRhymePanelOpen(true);
           }}
         />
       )}
 
-      {activeTab === "chat" && chatBodyNode}
+      {activeTab === "chat" && renderChatPanel(true)}
 
       {activeTab === "admin" && user.is_admin && (
         <AdminPanel currentUserId={user.id} />
@@ -490,20 +527,20 @@ export default function App({ user, onLogout, justRegistered }: AppProps) {
         <nav className="topbar-nav">
           <button
             className={`topbar-tab${activeTab === "write" ? " topbar-tab--active" : ""}`}
-            onClick={() => setActiveTab("write")}
+            onClick={() => switchTab("write")}
           >Write</button>
           <button
             className={`topbar-tab${activeTab === "chat" ? " topbar-tab--active" : ""}`}
-            onClick={() => setActiveTab("chat")}
+            onClick={() => switchTab("chat")}
           >Chat</button>
           <button
             className={`topbar-tab${activeTab === "library" ? " topbar-tab--active" : ""}`}
-            onClick={() => setActiveTab("library")}
+            onClick={() => switchTab("library")}
           >Library</button>
           {user.is_admin && (
             <button
               className={`topbar-tab${activeTab === "admin" ? " topbar-tab--active" : ""}`}
-              onClick={() => setActiveTab("admin")}
+              onClick={() => switchTab("admin")}
             >Admin</button>
           )}
         </nav>
@@ -520,14 +557,6 @@ export default function App({ user, onLogout, justRegistered }: AppProps) {
               <><span className="save-dot error" />Save failed</>
             )}
           </div>
-          <button
-            className={`theme-toggle${chatDock.mode !== "closed" ? " theme-toggle--active" : ""}`}
-            onClick={chatDockCtl.toggle}
-            title="Toggle floating chat window"
-            aria-label="Toggle chat window"
-          >
-            💬
-          </button>
           <button
             className="theme-toggle"
             onClick={() => setShowPreferences(true)}
@@ -584,13 +613,13 @@ export default function App({ user, onLogout, justRegistered }: AppProps) {
           isDarkTheme={isDark}
           chatSessions={chatSessions}
           activeChatSessionId={activeChatSessionId}
-          onSelectChatSession={(id) => { setActiveChatSessionId(id); setActiveTab("chat"); }}
+          onSelectChatSession={openChatSession}
           onNewChatSession={handleNewChatSession}
           onDeleteChatSession={handleDeleteChatSession}
         />
 
         <main className="editor-pane" ref={mainAreaRef}>
-          {chatDock.mode === "main" ? (
+          {dockedInMain ? (
             <ResizableSplit
               direction={chatDock.side === "left" || chatDock.side === "right" ? "row" : "column"}
               first={
@@ -605,9 +634,9 @@ export default function App({ user, onLogout, justRegistered }: AppProps) {
           )}
         </main>
 
-        {activeTab === "write" || chatDock.mode === "side" ? (
+        {activeTab === "write" || dockedInSide ? (
           <div className="rhyme-panel-slot" ref={rightColumnRef}>
-            {chatDock.mode === "side" ? (
+            {dockedInSide ? (
               <ResizableSplit
                 direction="column"
                 first={chatDock.side === "top" ? renderDockedChatPane() : rhymeDictionaryNode}
@@ -620,7 +649,7 @@ export default function App({ user, onLogout, justRegistered }: AppProps) {
         ) : null}
       </div>
 
-      {chatDock.mode === "floating" && (
+      {chatDock.mode === "floating" && activeTab !== "chat" && (
         <FloatingChatWindow
           x={chatDock.x}
           y={chatDock.y}
@@ -630,7 +659,7 @@ export default function App({ user, onLogout, justRegistered }: AppProps) {
           onResizeStart={chatDockCtl.startResize}
           onClose={chatDockCtl.close}
         >
-          {chatBodyNode}
+          {renderChatPanel(false)}
         </FloatingChatWindow>
       )}
 

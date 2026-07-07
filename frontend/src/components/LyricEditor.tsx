@@ -1,8 +1,12 @@
 import { useState, useEffect, useRef, useCallback, forwardRef, useImperativeHandle, useMemo, useLayoutEffect } from "react";
 import { fetchAnalysis, type SyllableInfo, type ActiveGroup } from "../api/syllables";
 import { phonemeToColorIndex, getPhonemeColor, getSlantColor } from "../utils/phonemeColors";
+import { editSelection } from "../api/chat";
+import { diffWords } from "../utils/diffWords";
 import type { SpeechRecognitionEvent, SpeechRecognitionInstance } from "../types/speechRecognition";
 import { MicIcon } from "./icons";
+
+const RHYME_WORD_CAP = 5;
 
 const DEBOUNCE_MS = 400;
 
@@ -36,7 +40,6 @@ interface LyricEditorProps {
   onGroupsChange?: (groups: ActiveGroup[]) => void;
   onModeChange?: (mode: "rhymes" | "stress") => void;
   onSendToChat?: (text: string) => void;
-  onSearchRhymes?: (text: string) => void;
 }
 
 const SpeechRecognitionClass =
@@ -57,16 +60,32 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
       onGroupsChange,
       onModeChange,
       onSendToChat,
-      onSearchRhymes,
     }: LyricEditorProps,
     ref
   ) {
   const [counts, setCounts] = useState<number[]>([]);
-  const [selectionMenu, setSelectionMenu] = useState<{ text: string } | null>(null);
+  const [selectionMenu, setSelectionMenu] = useState<{
+    text: string;
+    start: number;
+    end: number;
+    top: number;
+    left: number;
+  } | null>(null);
+  const [pendingEdit, setPendingEdit] = useState<{
+    start: number;
+    end: number;
+    original: string;
+    suggestion: string;
+    top: number;
+    left: number;
+  } | null>(null);
+  const [editLoading, setEditLoading] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
   const [syllableData, setSyllableData] = useState<SyllableInfo[][][]>([]);
   const [syllableColorMap, setSyllableColorMap] = useState<Map<string, string>>(new Map());
   const [slantColorMap, setSlantColorMap] = useState<Map<number, string>>(new Map());
 
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const mirrorRef = useRef<HTMLDivElement>(null);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -341,8 +360,46 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
     activeColorGroups,
   ]);
 
+  function locateOffset(container: HTMLElement, offset: number): { node: Node; offset: number } | null {
+    const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+    let remaining = offset;
+    let last: Text | null = null;
+    let node: Node | null;
+    while ((node = walker.nextNode())) {
+      const text = node as Text;
+      const len = text.textContent?.length ?? 0;
+      last = text;
+      if (remaining <= len) return { node: text, offset: remaining };
+      remaining -= len;
+    }
+    return last ? { node: last, offset: last.textContent?.length ?? 0 } : null;
+  }
+
+  function getSelectionRect(lineIdx: number, startInLine: number, endInLine: number): DOMRect | null {
+    const container = lineRefs.current[lineIdx];
+    if (!container) return null;
+    const startLoc = locateOffset(container, startInLine);
+    const endLoc = locateOffset(container, endInLine);
+    if (!startLoc || !endLoc) return null;
+    const range = document.createRange();
+    range.setStart(startLoc.node, startLoc.offset);
+    range.setEnd(endLoc.node, endLoc.offset);
+    const rects = range.getClientRects();
+    return rects.length > 0 ? rects[0] : range.getBoundingClientRect();
+  }
+
+  function computeMenuPosition(lineIdx: number, startInLine: number, endInLine: number) {
+    const rect = getSelectionRect(lineIdx, startInLine, endInLine);
+    const wrapperRect = wrapperRef.current?.getBoundingClientRect();
+    if (!rect || !wrapperRect) return { top: 0, left: 0 };
+    return {
+      top: rect.top - wrapperRect.top - 8,
+      left: rect.left - wrapperRect.left + rect.width / 2,
+    };
+  }
+
   function handleSelectionChange() {
-    if (!onSelectionChange && !onCursorChange && !onSendToChat && !onSearchRhymes) return;
+    if (!onSelectionChange && !onCursorChange && !onSendToChat) return;
     const el = textareaRef.current;
     if (!el) return;
     const { selectionStart, selectionEnd, value } = el;
@@ -374,12 +431,16 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
     let words: string[] = selected.match(/\S+/g) ?? [];
     if (words.length === 0) { setSelectionMenu(null); return; }
 
+    let trimmedStart = selectionStart;
+    let trimmedEnd = selectionEnd;
+
     if (
       selectionStart > 0 &&
       /\w/.test(value[selectionStart - 1]) &&
       /\S/.test(selected[0])
     ) {
       words = words.slice(1);
+      trimmedStart = selectionStart + (selected.match(/^\S+\s*/)?.[0].length ?? 0);
     }
 
     if (
@@ -388,44 +449,112 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
       /\S/.test(selected[selected.length - 1])
     ) {
       words = words.slice(0, -1);
+      const tail = value.slice(trimmedStart, selectionEnd);
+      trimmedEnd = trimmedStart + (tail.match(/\s*\S+$/)?.index ?? tail.length);
     }
 
     if (words.length === 0) { setSelectionMenu(null); return; }
     const query = words.join(" ");
     if (query.length < 2) { setSelectionMenu(null); return; }
-    if (words.length > 5) { setSelectionMenu(null); return; }
-    onSelectionChange?.(query);
-    if (onSendToChat || onSearchRhymes) setSelectionMenu({ text: query });
+
+    const rhymeWords = words.length > RHYME_WORD_CAP ? words.slice(-RHYME_WORD_CAP) : words;
+    onSelectionChange?.(rhymeWords.join(" "));
+
+    if (onSendToChat) {
+      const lineStart = value.lastIndexOf("\n", trimmedStart - 1) + 1;
+      const lineIdx = (value.slice(0, trimmedStart).match(/\n/g) ?? []).length;
+      const { top, left } = computeMenuPosition(lineIdx, trimmedStart - lineStart, trimmedEnd - lineStart);
+      setSelectionMenu({ text: query, start: trimmedStart, end: trimmedEnd, top, left });
+    }
+  }
+
+  async function handleChangeThis() {
+    if (!selectionMenu) return;
+    const { text, start, end, top, left } = selectionMenu;
+    setSelectionMenu(null);
+    setEditLoading(true);
+    setEditError(null);
+    try {
+      const suggestion = await editSelection(text);
+      setPendingEdit({ start, end, original: text, suggestion, top, left });
+    } catch (e) {
+      setEditError(e instanceof Error ? e.message : "Failed to get a suggestion");
+    } finally {
+      setEditLoading(false);
+    }
+  }
+
+  function acceptEdit() {
+    if (!pendingEdit) return;
+    const { start, end, suggestion } = pendingEdit;
+    const value = contentRef.current;
+    onContentChange(value.slice(0, start) + suggestion + value.slice(end));
+    setPendingEdit(null);
+  }
+
+  function rejectEdit() {
+    setPendingEdit(null);
   }
 
   const baseLineH = parseFloat(lineHeight);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden", position: "relative" }}>
+    <div ref={wrapperRef} style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden", position: "relative" }}>
 
       {/* ── Selection action menu ── */}
-      {selectionMenu && (onSendToChat || onSearchRhymes) && (
-        <div className="selection-action-menu">
+      {selectionMenu && onSendToChat && (
+        <div className="selection-action-menu" style={{ top: selectionMenu.top, left: selectionMenu.left }}>
           <span className="selection-action-text">"{selectionMenu.text}"</span>
-          {onSendToChat && (
-            <button
-              className="selection-action-btn"
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => { onSendToChat(selectionMenu.text); setSelectionMenu(null); }}
-            >
-              Send to Chat
-            </button>
-          )}
-          {onSearchRhymes && (
-            <button
-              className="selection-action-btn"
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => onSearchRhymes(selectionMenu.text)}
-            >
-              Search rhymes
-            </button>
-          )}
+          <button
+            className="selection-action-btn"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => { onSendToChat(selectionMenu.text); setSelectionMenu(null); }}
+          >
+            Send to Chat
+          </button>
+          <button
+            className="selection-action-btn selection-action-btn--primary"
+            onMouseDown={(e) => e.preventDefault()}
+            disabled={editLoading}
+            onClick={handleChangeThis}
+          >
+            {editLoading ? "Thinking…" : "Change this"}
+          </button>
         </div>
+      )}
+
+      {/* ── Pending AI edit: inline diff, accept/reject ── */}
+      {pendingEdit && (
+        <div className="edit-diff-card" style={{ top: pendingEdit.top, left: pendingEdit.left }}>
+          <div className="edit-diff-text">
+            {diffWords(pendingEdit.original, pendingEdit.suggestion).map((tok, i) => (
+              <span
+                key={i}
+                className={
+                  tok.kind === "removed" ? "diff-removed" : tok.kind === "added" ? "diff-added" : undefined
+                }
+              >
+                {tok.text}
+              </span>
+            ))}
+          </div>
+          <div className="edit-diff-actions">
+            <button className="selection-action-btn" onMouseDown={(e) => e.preventDefault()} onClick={rejectEdit}>
+              Reject
+            </button>
+            <button
+              className="selection-action-btn selection-action-btn--primary"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={acceptEdit}
+            >
+              Accept
+            </button>
+          </div>
+        </div>
+      )}
+
+      {editError && (
+        <div className="edit-diff-error">{editError}</div>
       )}
 
       {/* ── Toolbar ── */}

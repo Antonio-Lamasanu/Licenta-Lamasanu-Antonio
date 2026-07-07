@@ -2138,7 +2138,24 @@ html, body, #root {
   height: 100%;
   min-height: 0;
   overflow: hidden;
+  position: relative;
 }
+
+.chat-minimize-btn {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  z-index: 15;
+  font-size: 11.5px;
+  font-weight: 500;
+  padding: 5px 10px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--rule);
+  background: var(--panel);
+  color: var(--ink-2);
+  cursor: pointer;
+}
+.chat-minimize-btn:hover { background: var(--bg-deep); }
 
 .chat-panel--empty {
   align-items: center;
@@ -2329,7 +2346,6 @@ html, body, #root {
   cursor: pointer;
 }
 .chat-shortcut-btn:hover { background: var(--bg-deep); }
-.chat-shortcut-btn--insert { color: var(--accent-2); border-color: var(--accent-2); }
 .chat-shortcut-btn:disabled { opacity: 0.5; cursor: default; }
 
 .chat-category { position: relative; }
@@ -2535,8 +2551,7 @@ html, body, #root {
 /* ─── Selection action menu (LyricEditor) ─── */
 .selection-action-menu {
   position: absolute;
-  bottom: 78px;
-  right: 40px;
+  transform: translate(-50%, -100%);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -2573,3 +2588,65 @@ html, body, #root {
   flex-shrink: 0;
 }
 .selection-action-btn:hover { background: var(--bg-deep); }
+.selection-action-btn:disabled { opacity: 0.6; cursor: default; }
+
+.selection-action-btn--primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg);
+}
+.selection-action-btn--primary:hover { background: var(--accent-2); border-color: var(--accent-2); }
+
+/* ─── AI edit diff card (LyricEditor "Change this") ─── */
+.edit-diff-card {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow);
+  padding: 10px 12px;
+  z-index: 21;
+  max-width: 420px;
+  min-width: 220px;
+}
+
+.edit-diff-text {
+  font-family: var(--serif);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+
+.diff-removed {
+  color: var(--ink-4);
+  text-decoration: line-through;
+}
+
+.diff-added {
+  background: rgba(120, 200, 140, 0.28);
+  border-radius: 2px;
+}
+.theme-dark .diff-added { background: rgba(120, 200, 140, 0.22); }
+
+.edit-diff-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.edit-diff-error {
+  position: absolute;
+  bottom: 78px;
+  right: 40px;
+  font-size: 12px;
+  color: var(--danger, #c0392b);
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-sm);
+  padding: 6px 10px;
+  z-index: 20;
+}

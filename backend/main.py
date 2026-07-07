@@ -449,6 +449,15 @@ class ChatTurnCreate(BaseModel):
     content: str
 
 
+class EditSelectionRequest(BaseModel):
+    text: str
+    instruction: str | None = None
+
+
+class EditSelectionOut(BaseModel):
+    result: str
+
+
 # --- User profile models ---
 
 class UserProfileIn(BaseModel):
@@ -1403,6 +1412,47 @@ def create_chat_turn(session_id: int, body: ChatTurnCreate, current_user: dict =
             })
 
         return StreamingResponse(event_stream(), media_type="text/event-stream")
+
+
+_EDIT_SELECTION_SYSTEM_PROMPT = (
+    "You are a line-editing assistant for song lyrics and poetry. The user gives you a "
+    "short excerpt and an instruction. Rewrite the excerpt per the instruction and reply "
+    "with ONLY the rewritten excerpt - no explanation, no quotation marks, no markdown, "
+    "no commentary. Preserve the original line breaks."
+)
+
+
+@app.post("/api/edit-selection", response_model=EditSelectionOut)
+def edit_selection(body: EditSelectionRequest, current_user: dict = Depends(get_current_user)):
+    text = body.text.strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="text must not be empty")
+    if not MISTRAL_API_KEY:
+        raise HTTPException(status_code=500, detail="MISTRAL_API_KEY not configured")
+
+    instruction = (body.instruction or "Improve this text.").strip()
+    messages = [
+        {"role": "system", "content": _EDIT_SELECTION_SYSTEM_PROMPT},
+        {"role": "user", "content": f"Instruction: {instruction}\n\nText:\n{text}"},
+    ]
+
+    try:
+        resp = requests.post(
+            MISTRAL_CHAT_URL,
+            headers={
+                "Authorization": f"Bearer {MISTRAL_API_KEY}",
+                "Content-Type": "application/json",
+            },
+            json={"model": MISTRAL_MODEL, "messages": messages, "stream": False},
+            timeout=60,
+        )
+        resp.raise_for_status()
+    except requests.RequestException as exc:
+        logger.warning("mistral edit-selection call failed: %r", exc)
+        raise HTTPException(status_code=502, detail="Failed to reach Mistral API") from exc
+
+    result = resp.json()["choices"][0]["message"]["content"].strip()
+    return EditSelectionOut(result=result)
 
 
 # --- User profile endpoints ---

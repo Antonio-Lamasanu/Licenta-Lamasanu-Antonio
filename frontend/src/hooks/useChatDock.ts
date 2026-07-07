@@ -29,25 +29,48 @@ export function useChatDock(
   const [preview, setPreview] = useState<DockPreview>(null);
   const dragOffset = useRef<{ x: number; y: number } | null>(null);
   const resizeStart = useRef<{ x: number; y: number; width: number; height: number } | null>(null);
+  const lastFloatingRect = useRef<{ x: number; y: number; width: number; height: number } | null>(null);
 
   const close = useCallback(() => {
-    setDock({ mode: "closed" });
-    setPreview(null);
-  }, []);
-
-  const toggle = useCallback(() => {
     setDock((prev) => {
-      if (prev.mode !== "closed") return { mode: "closed" };
-      return {
-        mode: "floating",
-        x: Math.max(20, window.innerWidth - DEFAULT_WIDTH - 40),
-        y: Math.max(20, window.innerHeight - DEFAULT_HEIGHT - 100),
-        width: DEFAULT_WIDTH,
-        height: DEFAULT_HEIGHT,
-      };
+      if (prev.mode === "floating") {
+        lastFloatingRect.current = { x: prev.x, y: prev.y, width: prev.width, height: prev.height };
+      }
+      return { mode: "closed" };
     });
     setPreview(null);
   }, []);
+
+  const defaultFloatingRect = useCallback(() => {
+    if (lastFloatingRect.current) return lastFloatingRect.current;
+    return {
+      x: Math.max(20, window.innerWidth - DEFAULT_WIDTH - 40),
+      y: Math.max(20, window.innerHeight - DEFAULT_HEIGHT - 100),
+      width: DEFAULT_WIDTH,
+      height: DEFAULT_HEIGHT,
+    };
+  }, []);
+
+  const openFloating = useCallback(() => {
+    setDock((prev) => {
+      if (prev.mode === "floating") return prev;
+      return { mode: "floating", ...defaultFloatingRect() };
+    });
+    setPreview(null);
+  }, [defaultFloatingRect]);
+
+  const toggle = useCallback(() => {
+    setDock((prev) => {
+      if (prev.mode !== "closed") {
+        if (prev.mode === "floating") {
+          lastFloatingRect.current = { x: prev.x, y: prev.y, width: prev.width, height: prev.height };
+        }
+        return { mode: "closed" };
+      }
+      return { mode: "floating", ...defaultFloatingRect() };
+    });
+    setPreview(null);
+  }, [defaultFloatingRect]);
 
   const computePreview = useCallback(
     (clientX: number, clientY: number): DockPreview => {
@@ -150,11 +173,14 @@ export function useChatDock(
         setPreview(null);
 
         if (finalPreview) {
-          setDock(
-            finalPreview.kind === "main"
+          setDock((prev) => {
+            if (prev.mode === "floating") {
+              lastFloatingRect.current = { x: prev.x, y: prev.y, width: prev.width, height: prev.height };
+            }
+            return finalPreview.kind === "main"
               ? { mode: "main", side: finalPreview.side }
-              : { mode: "side", side: finalPreview.side }
-          );
+              : { mode: "side", side: finalPreview.side };
+          });
           return;
         }
 
@@ -210,5 +236,5 @@ export function useChatDock(
     [dock]
   );
 
-  return { dock, preview, close, toggle, startDrag, startResize };
+  return { dock, preview, close, toggle, openFloating, startDrag, startResize };
 }
