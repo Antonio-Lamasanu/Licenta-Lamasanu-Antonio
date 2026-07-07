@@ -8,7 +8,7 @@ import { useSyllableAnalysis } from "../hooks/useSyllableAnalysis";
 import { useSelectionMenu } from "../hooks/useSelectionMenu";
 import { MicIcon } from "./icons";
 
-const RENDER_DEBOUNCE_MS = 150;
+const CONTENT_PUSH_DEBOUNCE_MS = 200;
 
 const EDITOR_STYLE = {
   fontFamily: "var(--serif)",
@@ -75,12 +75,65 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
   const wrapperRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const mirrorRef = useRef<HTMLDivElement>(null);
-  const contentRef = useRef(content);
-  useEffect(() => { contentRef.current = content; }, [content]);
+  // ── Plain text lives here, decoupled from `content` (App's lifted, auto-saved
+  // state). Typing only ever touches this local state, so a keystroke's render is
+  // scoped to this component - App and its siblings (sidebar, rhyme panel, chat)
+  // never re-render from a keystroke, they only see updates via the debounced
+  // push below. This is the actual fix for input lag; the mirror-render debounce
+  // further down is a separate, smaller optimization on top of it. ─────────────
+  const [localContent, setLocalContent] = useState(content);
+  const localContentRef = useRef(localContent);
+  const syncedContentRef = useRef(content); // last value known to match `content` in either direction
+  const pushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Kept in a ref (not just closed over) so the useCallback-memoized functions below
+  // stay correct even if the parent recreates onContentChange on every render.
+  const onContentChangeRef = useRef(onContentChange);
+  useEffect(() => { onContentChangeRef.current = onContentChange; }, [onContentChange]);
+
+  function setLocal(value: string) {
+    localContentRef.current = value;
+    setLocalContent(value);
+  }
+
+  function flushPush() {
+    if (pushTimer.current !== null) {
+      clearTimeout(pushTimer.current);
+      pushTimer.current = null;
+    }
+    if (syncedContentRef.current !== localContentRef.current) {
+      syncedContentRef.current = localContentRef.current;
+      onContentChangeRef.current(localContentRef.current);
+    }
+  }
+
+  function handleLocalChange(value: string) {
+    setLocal(value);
+    if (pushTimer.current !== null) clearTimeout(pushTimer.current);
+    pushTimer.current = setTimeout(() => {
+      pushTimer.current = null;
+      syncedContentRef.current = value;
+      onContentChangeRef.current(value);
+    }, CONTENT_PUSH_DEBOUNCE_MS);
+  }
+
+  // External content change (note switch, chat "accept edit", etc.) - resync local
+  // state and drop any in-flight push so it can't clobber the newly loaded value.
+  useEffect(() => {
+    if (content !== syncedContentRef.current) {
+      if (pushTimer.current !== null) { clearTimeout(pushTimer.current); pushTimer.current = null; }
+      syncedContentRef.current = content;
+      setLocal(content);
+    }
+  }, [content]);
+
+  // Flush on unmount (e.g. switching away from the Write tab) so a pending edit
+  // isn't silently dropped.
+  useEffect(() => () => flushPush(), []);
 
   // Inserts/replaces via the browser's native editing command (when available) so the
   // change lands on the textarea's own undo/redo stack, same as a real keystroke would -
-  // a plain onContentChange(next) bypasses that stack entirely.
+  // a plain handleLocalChange(next) bypasses that stack entirely. When it succeeds, the
+  // resulting native "input" event still runs through the textarea's onChange below.
   const applyProgrammaticEdit = useCallback((start: number, end: number, text: string) => {
     const el = textareaRef.current;
     if (el && document.execCommand) {
@@ -89,22 +142,9 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
       const applied = document.execCommand("insertText", false, text);
       if (applied) return;
     }
-    const value = contentRef.current;
-    onContentChange(value.slice(0, start) + text + value.slice(end));
-  }, [onContentChange]);
-
-  // ── Rendering (highlighting/counting) lags slightly behind raw typing so the
-  // textarea itself never stalls on the expensive mirror rebuild below ──────
-  const [renderContent, setRenderContent] = useState(content);
-  const renderDebounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => {
-    if (renderDebounceTimer.current !== null) clearTimeout(renderDebounceTimer.current);
-    renderDebounceTimer.current = setTimeout(() => setRenderContent(content), RENDER_DEBOUNCE_MS);
-    return () => {
-      if (renderDebounceTimer.current !== null) clearTimeout(renderDebounceTimer.current);
-    };
-  }, [content]);
-  // ──────────────────────────────────────────────────────────────────────
+    const value = localContentRef.current;
+    handleLocalChange(value.slice(0, start) + text + value.slice(end));
+  }, []);
 
   // ── Line height measurement for wrap tracking ─────────────────────────
   const lineRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -120,7 +160,7 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
       prevHeightsRef.current = heights;
       setLineHeights([...heights]);
     }
-  }, [renderContent]);
+  }, [localContent]);
   // ──────────────────────────────────────────────────────────────────────
 
   // ── Voice / speech ────────────────────────────────────────────────────
@@ -130,7 +170,7 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
 
   function startRecording() {
     if (!SpeechRecognitionClass) return;
-    speechInsertPos.current = textareaRef.current?.selectionStart ?? contentRef.current.length;
+    speechInsertPos.current = textareaRef.current?.selectionStart ?? localContentRef.current.length;
     const r = new SpeechRecognitionClass();
     r.continuous = true;
     r.interimResults = false;
@@ -141,7 +181,7 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
           const text = event.results[i][0].transcript.trim();
           if (!text) continue;
           const pos = speechInsertPos.current;
-          const cur = contentRef.current;
+          const cur = localContentRef.current;
           const sep = pos > 0 && !cur.slice(0, pos).endsWith("\n") ? " " : "";
           applyProgrammaticEdit(pos, pos, sep + text);
           speechInsertPos.current = textareaRef.current?.selectionStart ?? pos + sep.length + text.length;
@@ -184,16 +224,16 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
   const effectiveRhymeMode = rhymeMode !== "highlight" ? rhymeMode : localRhymeMode;
   const lineHeight = EDITOR_STYLE.lineHeight;
 
-  const { counts, syllableData, syllableColorMap, slantColorMap } = useSyllableAnalysis(content, onGroupsChange);
+  const { counts, syllableData, syllableColorMap, slantColorMap } = useSyllableAnalysis(localContent, onGroupsChange);
 
   useEffect(() => {
     const el = textareaRef.current;
     if (!el) return;
     el.style.height = "auto";
     el.style.height = el.scrollHeight + "px";
-  }, [content]);
+  }, [localContent]);
 
-  const lines = useMemo(() => renderContent.split("\n"), [renderContent]);
+  const lines = useMemo(() => localContent.split("\n"), [localContent]);
 
   // "Change this" selections never span multiple lines (see handleSelectionChange),
   // so each active edit maps to exactly one line for the inline diff overlay.
@@ -203,7 +243,7 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
       { turnId: number; startInLine: number; endInLine: number; original: string; suggestion: string }
     >();
     for (const edit of activeEdits) {
-      const before = content.slice(0, edit.start);
+      const before = localContent.slice(0, edit.start);
       const lineStart = before.lastIndexOf("\n") + 1;
       const lineIdx = (before.match(/\n/g) ?? []).length;
       map.set(lineIdx, {
@@ -215,7 +255,7 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
       });
     }
     return map;
-  }, [activeEdits, content]);
+  }, [activeEdits, localContent]);
 
   // Accept/Reject for the inline diff must live outside the mirror div (which is
   // pointer-events:none so the textarea on top of it can capture typing/selection),
@@ -232,7 +272,7 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
       next.set(edit.turnId, { top: rect.top - wrapperRect.top, left: rect.right - wrapperRect.left + 12 });
     }
     setEditButtonPositions(next);
-  }, [activeEditsByLine, lineHeights, renderContent]);
+  }, [activeEditsByLine, lineHeights, localContent]);
 
   const renderedLines = useMemo(() => {
     return lines.map((line, lineIdx) => {
@@ -474,7 +514,7 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
             input.onchange = (ev) => {
               const file = (ev.target as HTMLInputElement).files?.[0];
               if (!file) return;
-              file.text().then((text) => applyProgrammaticEdit(0, contentRef.current.length, text));
+              file.text().then((text) => applyProgrammaticEdit(0, localContentRef.current.length, text));
             };
             input.click();
           }}
@@ -569,8 +609,9 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
               minHeight: "60vh",
               height: "auto",
             }}
-            value={content}
-            onChange={(e) => onContentChange(e.target.value)}
+            value={localContent}
+            onChange={(e) => handleLocalChange(e.target.value)}
+            onBlur={flushPush}
             onKeyUp={handleSelectionChange}
             onMouseUp={handleSelectionChange}
             wrap="soft"

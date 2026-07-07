@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { ChatSession, ChatTurn } from "../api/chat";
@@ -9,6 +10,7 @@ import { diffWords } from "../utils/diffWords";
 import { MicIcon } from "./icons";
 
 interface ChatPanelProps {
+  isDark: boolean;
   session: ChatSession | null;
   turns: ChatTurn[];
   loadingTurns: boolean;
@@ -32,6 +34,7 @@ interface ChatPanelProps {
 }
 
 export default function ChatPanel({
+  isDark,
   session,
   turns,
   loadingTurns,
@@ -55,10 +58,13 @@ export default function ChatPanel({
 }: ChatPanelProps) {
   const [draft, setDraft] = useState("");
   const [openCategory, setOpenCategory] = useState<string | null>(null);
+  const [menuStyle, setMenuStyle] = useState<React.CSSProperties | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const threadRef = useRef<HTMLDivElement>(null);
   const lastInjectSeq = useRef<number | null>(null);
   const categoryRowRef = useRef<HTMLDivElement>(null);
+  const categoryMenuRef = useRef<HTMLDivElement>(null);
+  const categoryTriggerRefs = useRef<Map<string, HTMLButtonElement | null>>(new Map());
 
   function appendToDraft(text: string) {
     setDraft((prev) => (prev ? prev.trimEnd() + "\n\n" + text : text));
@@ -81,12 +87,60 @@ export default function ChatPanel({
   useEffect(() => {
     if (openCategory === null) return;
     function handleOutsideClick(e: MouseEvent) {
-      if (categoryRowRef.current && !categoryRowRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      const insideRow = categoryRowRef.current?.contains(target);
+      const insideMenu = categoryMenuRef.current?.contains(target);
+      if (!insideRow && !insideMenu) {
         setOpenCategory(null);
       }
     }
     document.addEventListener("mousedown", handleOutsideClick);
     return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, [openCategory]);
+
+  // Position the portaled dropdown against its trigger button, flipping
+  // horizontally/vertically so it always stays fully within the viewport.
+  useLayoutEffect(() => {
+    if (!openCategory) {
+      setMenuStyle(null);
+      return;
+    }
+    const trigger = categoryTriggerRefs.current.get(openCategory);
+    const menu = categoryMenuRef.current;
+    if (!trigger || !menu) return;
+
+    const margin = 8;
+    const triggerRect = trigger.getBoundingClientRect();
+    const menuRect = menu.getBoundingClientRect();
+
+    let left = triggerRect.left;
+    if (left + menuRect.width > window.innerWidth - margin) {
+      left = triggerRect.right - menuRect.width;
+    }
+    left = Math.max(margin, left);
+
+    let top = triggerRect.top - menuRect.height - 6;
+    if (top < margin) {
+      top = triggerRect.bottom + 6;
+    }
+
+    setMenuStyle({ position: "fixed", top, left, zIndex: 300 });
+  }, [openCategory]);
+
+  // Reposition data can go stale the instant the page scrolls or resizes
+  // (fixed coords are viewport-relative) — closing is simpler and safer
+  // than tracking every scrollable ancestor.
+  useEffect(() => {
+    if (!openCategory) return;
+    function close() {
+      setOpenCategory(null);
+    }
+    window.addEventListener("resize", close);
+    window.addEventListener("scroll", close, true);
+    return () => {
+      window.removeEventListener("resize", close);
+      window.removeEventListener("scroll", close, true);
+    };
   }, [openCategory]);
 
   function handleSend() {
@@ -114,35 +168,46 @@ export default function ChatPanel({
 
   const isEmpty = !loadingTurns && turns.length === 0 && !sending;
 
+  const openCategoryData = CHAT_CATEGORIES.find((cat) => cat.id === openCategory) ?? null;
+
   const categoryRow = (
     <div className="chat-shortcuts" ref={categoryRowRef}>
       {CHAT_CATEGORIES.map((cat) => (
         <div key={cat.id} className="chat-category">
           <button
+            ref={(el) => {
+              categoryTriggerRefs.current.set(cat.id, el);
+            }}
             className={`chat-shortcut-btn chat-category-btn${openCategory === cat.id ? " chat-category-btn--open" : ""}`}
             onClick={() => setOpenCategory((prev) => (prev === cat.id ? null : cat.id))}
           >
             <span aria-hidden="true">{cat.icon}</span> {cat.label}
           </button>
-          {openCategory === cat.id && (
-            <div className="chat-category-dropdown">
-              {cat.starters.map((starter) => (
-                <button
-                  key={starter}
-                  className="chat-category-option"
-                  onClick={() => {
-                    setDraft(starter);
-                    setOpenCategory(null);
-                    textareaRef.current?.focus();
-                  }}
-                >
-                  {starter}
-                </button>
-              ))}
-            </div>
-          )}
         </div>
       ))}
+      {openCategoryData &&
+        createPortal(
+          <div
+            ref={categoryMenuRef}
+            className={`chat-category-dropdown${isDark ? " theme-dark" : ""}`}
+            style={menuStyle ?? { position: "fixed", top: -9999, left: -9999, visibility: "hidden" }}
+          >
+            {openCategoryData.starters.map((starter) => (
+              <button
+                key={starter}
+                className="chat-category-option"
+                onClick={() => {
+                  setDraft(starter);
+                  setOpenCategory(null);
+                  textareaRef.current?.focus();
+                }}
+              >
+                {starter}
+              </button>
+            ))}
+          </div>,
+          document.body
+        )}
     </div>
   );
 

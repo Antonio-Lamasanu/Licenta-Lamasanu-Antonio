@@ -1,14 +1,32 @@
-import { useEffect, useState } from "react";
-import { fetchScratchpad, pinScratchpadWord, unpinScratchpadWord } from "../api/scratchpad";
+import { useEffect, useRef, useState } from "react";
+import {
+  fetchScratchpad,
+  fetchScratchpadText,
+  pinScratchpadWord,
+  saveScratchpadText,
+  unpinScratchpadWord,
+} from "../api/scratchpad";
 
 export function useScratchpad() {
   const [scratchpadWords, setScratchpadWords] = useState<string[]>([]);
+  const [scratchpadText, setScratchpadTextState] = useState("");
   const [scratchpadOpen, setScratchpadOpen] = useState(false);
+  const lastSavedText = useRef<string | null>(null);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     fetchScratchpad()
       .then((words) => setScratchpadWords(words.map((w) => w.word)))
       .catch(console.error);
+    fetchScratchpadText()
+      .then((text) => {
+        setScratchpadTextState(text);
+        lastSavedText.current = text;
+      })
+      .catch(console.error);
+    return () => {
+      if (saveTimer.current !== null) clearTimeout(saveTimer.current);
+    };
   }, []);
 
   function addToScratchpad(word: string) {
@@ -22,5 +40,26 @@ export function useScratchpad() {
     unpinScratchpadWord(word).catch(console.error);
   }
 
-  return { scratchpadWords, scratchpadOpen, setScratchpadOpen, addToScratchpad, removeFromScratchpad };
+  function setScratchpadText(text: string) {
+    setScratchpadTextState(text);
+    if (saveTimer.current !== null) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      if (lastSavedText.current === text) return;
+      saveScratchpadText(text)
+        .then(() => {
+          lastSavedText.current = text;
+        })
+        .catch(console.error);
+    }, 1000);
+  }
+
+  return {
+    scratchpadWords,
+    scratchpadText,
+    setScratchpadText,
+    scratchpadOpen,
+    setScratchpadOpen,
+    addToScratchpad,
+    removeFromScratchpad,
+  };
 }

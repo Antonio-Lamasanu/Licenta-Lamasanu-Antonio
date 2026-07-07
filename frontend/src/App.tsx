@@ -82,8 +82,15 @@ export default function App({ user, onLogout, justRegistered }: AppProps) {
     handleTitleChange,
   } = useNotes(() => setActiveColorGroups(null));
 
-  const { scratchpadWords, scratchpadOpen, setScratchpadOpen, addToScratchpad, removeFromScratchpad } =
-    useScratchpad();
+  const {
+    scratchpadWords,
+    scratchpadText,
+    setScratchpadText,
+    scratchpadOpen,
+    setScratchpadOpen,
+    addToScratchpad,
+    removeFromScratchpad,
+  } = useScratchpad();
 
   const editorRef = useRef<LyricEditorHandle>(null);
   const layoutRef = useRef<HTMLDivElement>(null);
@@ -222,6 +229,7 @@ export default function App({ user, onLogout, justRegistered }: AppProps) {
   function renderChatPanel(showMinimize: boolean) {
     return (
       <ChatPanel
+        isDark={isDark}
         session={chatSessions.find((s) => s.id === activeChatSessionId) ?? null}
         turns={chatTurns}
         loadingTurns={chatTurnsLoading}
@@ -380,6 +388,14 @@ export default function App({ user, onLogout, justRegistered }: AppProps) {
             )}
           </div>
           <button
+            className={`theme-toggle${scratchpadOpen ? " theme-toggle--active" : ""}`}
+            onClick={() => setScratchpadOpen((o) => !o)}
+            title="Scratchpad"
+            aria-label="Toggle scratchpad"
+          >
+            📌
+          </button>
+          <button
             className="theme-toggle"
             onClick={() => setShowPreferences(true)}
             title="Songwriting preferences"
@@ -499,6 +515,8 @@ export default function App({ user, onLogout, justRegistered }: AppProps) {
       {scratchpadOpen && (
         <Scratchpad
           words={scratchpadWords}
+          text={scratchpadText}
+          onTextChange={setScratchpadText}
           onRemove={removeFromScratchpad}
           onClose={() => setScratchpadOpen(false)}
           onInsert={(word) => {

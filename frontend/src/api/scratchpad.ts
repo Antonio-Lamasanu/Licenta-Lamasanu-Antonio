@@ -28,3 +28,19 @@ export async function unpinScratchpadWord(word: string): Promise<void> {
   });
   if (!res.ok && res.status !== 204) throw new Error(`Unpin word error: ${res.status}`);
 }
+
+export async function fetchScratchpadText(): Promise<string> {
+  const res = await apiFetch(`/api/scratchpad-text`);
+  if (!res.ok) throw new Error(`Scratchpad text error: ${res.status}`);
+  const data = (await res.json()) as { text: string | null };
+  return data.text ?? "";
+}
+
+export async function saveScratchpadText(text: string): Promise<void> {
+  const res = await apiFetch(`/api/scratchpad-text`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text }),
+  });
+  if (!res.ok) throw new Error(`Save scratchpad text error: ${res.status}`);
+}

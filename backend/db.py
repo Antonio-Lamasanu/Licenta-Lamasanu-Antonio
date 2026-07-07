@@ -86,6 +86,7 @@ def init_db():
             updated_at        TIMESTAMPTZ
         )
     """)
+    conn.execute("ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS scratchpad_text TEXT")
     conn.execute(
         """INSERT INTO users (email, password_hash, is_admin)
            VALUES (%s, %s, true)
