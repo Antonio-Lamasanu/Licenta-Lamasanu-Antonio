@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useEffect, useRef, useState } from "react";
 import LyricEditor, { type LyricEditorHandle } from "./components/LyricEditor";
 import NotesSidebar from "./components/NotesSidebar";
 import RhymeDictionary from "./components/RhymeDictionary";
@@ -11,25 +11,15 @@ import FloatingChatWindow from "./components/FloatingChatWindow";
 import ResizableSplit from "./components/ResizableSplit";
 import OnboardingModal from "./components/OnboardingModal";
 import PreferencesModal from "./components/PreferencesModal";
-import { useAutoSave } from "./hooks/useAutoSave";
 import { useChatDock } from "./hooks/useChatDock";
-import { fetchNotes, createNote, deleteNote, updateNote, searchNotes } from "./api/notes";
-import { fetchScratchpad, pinScratchpadWord, unpinScratchpadWord } from "./api/scratchpad";
-import {
-  fetchChatSessions,
-  createChatSession,
-  deleteChatSession,
-  renameChatSession,
-  fetchChatTurns,
-  streamChatTurn,
-  type ChatSession,
-  type ChatTurn,
-} from "./api/chat";
-import type { Note } from "./types/note";
+import { useTheme } from "./hooks/useTheme";
+import { useScratchpad } from "./hooks/useScratchpad";
+import { useNotes } from "./hooks/useNotes";
+import { useChatWorkflow, type EditSuggestion, type ResolvedEdit } from "./hooks/useChatWorkflow";
 import type { ActiveGroup } from "./api/syllables";
 import type { User } from "./api/auth";
-import { locateEditRange } from "./utils/editRange";
-import { buildEditDisplayPrompt, buildEditWirePrompt, extractRewrite } from "./utils/editMarkers";
+
+export type { EditSuggestion, ResolvedEdit };
 
 function Wordmark({ isDark }: { isDark: boolean }) {
   return (
@@ -53,82 +43,13 @@ interface AppProps {
   justRegistered: boolean;
 }
 
-interface PendingSelectionEdit {
-  noteId: number;
-  start: number;
-  end: number;
-  original: string;
-  displayPrompt: string;
-}
-
-interface ActiveEditContext {
-  sessionId: number;
-  noteId: number;
-  start: number;
-  end: number;
-  original: string;
-}
-
-export interface EditSuggestion {
-  noteId: number;
-  start: number;
-  end: number;
-  original: string;
-  suggestion: string;
-}
-
-export interface ResolvedEdit {
-  turnId: number;
-  start: number;
-  end: number;
-  original: string;
-  suggestion: string;
-}
-
 export default function App({ user, onLogout, justRegistered }: AppProps) {
-  // ── Notes state ──
-  const [notes, setNotes] = useState<Note[]>([]);
-  const [activeNoteId, setActiveNoteId] = useState<number | null>(null);
-  const [activeTitle, setActiveTitle] = useState("");
-  const [activeContent, setActiveContent] = useState("");
-  const titleIsManual = useRef(false);
-  const { saveStatus, setLastSaved } = useAutoSave(activeNoteId, activeTitle, activeContent);
-
-  // ── Theme: 3-state light / dark / auto ──
-  const [themeMode, setThemeMode] = useState<"light" | "dark" | "auto">("auto");
-  const [systemDark, setSystemDark] = useState(
-    () => window.matchMedia("(prefers-color-scheme: dark)").matches
-  );
-  const isDark = themeMode === "dark" || (themeMode === "auto" && systemDark);
+  const { themeMode, isDark, themeIcon, cycleTheme } = useTheme();
 
   // ── Layout state ──
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [rhymePanelOpen, setRhymePanelOpen] = useState(true);
   const [activeTab, setActiveTab] = useState<"write" | "library" | "chat" | "admin">("write");
-
-  // ── Chat state ──
-  const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
-  const [activeChatSessionId, setActiveChatSessionId] = useState<number | null>(null);
-  const [chatTurns, setChatTurns] = useState<ChatTurn[]>([]);
-  const [chatTurnsLoading, setChatTurnsLoading] = useState(false);
-  const [chatSending, setChatSending] = useState(false);
-  const [chatPendingUserText, setChatPendingUserText] = useState<string | null>(null);
-  const [chatStreamingText, setChatStreamingText] = useState<string | null>(null);
-  const [chatError, setChatError] = useState<string | null>(null);
-  const [chatInject, setChatInject] = useState<{ text: string; seq: number } | null>(null);
-  const [editSuggestions, setEditSuggestions] = useState<Map<number, EditSuggestion>>(new Map());
-  const [userTurnDisplay, setUserTurnDisplay] = useState<Map<number, string>>(new Map());
-  // Extracted rewrite text per assistant turn - kept forever (unlike editSuggestions,
-  // which is cleared on accept/reject/staleness) so the bubble can always fall back to
-  // clean copy-pasteable text instead of the raw <<<REWRITE>>> markers.
-  const [assistantEditText, setAssistantEditText] = useState<Map<number, string>>(new Map());
-  const pendingEditRef = useRef<PendingSelectionEdit | null>(null);
-  const activeEditContextRef = useRef<ActiveEditContext | null>(null);
-  // Sessions that have had the full note pasted in at least once - used only to decide
-  // whether to show a soft "insert full note" hint before a "Change this" request, never
-  // to block sending.
-  const [noteContextSessions, setNoteContextSessions] = useState<Set<number>>(new Set());
-  const [noteContextHint, setNoteContextHint] = useState(false);
 
   // ── Onboarding / preferences ──
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -137,16 +58,32 @@ export default function App({ user, onLogout, justRegistered }: AppProps) {
   // ── Rhyme query + auto mode ──
   const [rhymeQuery, setRhymeQuery] = useState("");
   const [autoMode, setAutoMode] = useState(false);
-  const [sidebarSearch, setSidebarSearch] = useState("");
 
   // ── Active rhyme groups ──
   const [activeGroups, setActiveGroups] = useState<ActiveGroup[]>([]);
   const [activeColorGroups, setActiveColorGroups] = useState<Set<number> | null>(null);
   const [editorMode, setEditorMode] = useState<"rhymes" | "stress">("rhymes");
 
-  // ── Scratchpad ──
-  const [scratchpadWords, setScratchpadWords] = useState<string[]>([]);
-  const [scratchpadOpen, setScratchpadOpen] = useState(false);
+  const {
+    notes,
+    activeNoteId,
+    activeTitle,
+    activeContent,
+    setActiveContent,
+    sidebarSearch,
+    setSidebarSearch,
+    saveStatus,
+    lineCount,
+    selectNote,
+    newNote,
+    removeNote,
+    renameNote,
+    handleContentChange,
+    handleTitleChange,
+  } = useNotes(() => setActiveColorGroups(null));
+
+  const { scratchpadWords, scratchpadOpen, setScratchpadOpen, addToScratchpad, removeFromScratchpad } =
+    useScratchpad();
 
   const editorRef = useRef<LyricEditorHandle>(null);
   const layoutRef = useRef<HTMLDivElement>(null);
@@ -155,14 +92,43 @@ export default function App({ user, onLogout, justRegistered }: AppProps) {
   const chatDockCtl = useChatDock(mainAreaRef, rightColumnRef);
   const { dock: chatDock, preview: chatDockPreview } = chatDockCtl;
 
-  // ── Effects ──
+  const {
+    chatSessions,
+    activeChatSessionId,
+    chatTurns,
+    chatTurnsLoading,
+    chatSending,
+    chatPendingUserText,
+    chatStreamingText,
+    chatError,
+    chatInject,
+    editSuggestions,
+    userTurnDisplay,
+    assistantEditText,
+    noteContextHint,
+    setNoteContextHint,
+    resolvedEdits,
+    resolvedTurnIds,
+    openChatSession,
+    handleNewChatSession,
+    handleDeleteChatSession,
+    handleRenameChatSession,
+    handleSendChatMessage,
+    handleChangeThisRequest,
+    handleAcceptEditSuggestion,
+    handleRejectEditSuggestion,
+    injectIntoChat,
+  } = useChatWorkflow({
+    activeNoteId,
+    activeContent,
+    setActiveContent,
+    editorRef,
+    activeTab,
+    chatDock,
+    openFloatingChat: chatDockCtl.openFloating,
+  });
 
-  useEffect(() => {
-    const mq = window.matchMedia("(prefers-color-scheme: dark)");
-    const handler = (e: MediaQueryListEvent) => setSystemDark(e.matches);
-    mq.addEventListener("change", handler);
-    return () => mq.removeEventListener("change", handler);
-  }, []);
+  // ── Effects ──
 
   useEffect(() => {
     const el = layoutRef.current;
@@ -178,83 +144,19 @@ export default function App({ user, onLogout, justRegistered }: AppProps) {
   }, []);
 
   useEffect(() => {
-    fetchNotes()
-      .then((loaded) => {
-        setNotes(loaded);
-        if (loaded.length > 0) {
-          const first = loaded[0];
-          setActiveNoteId(first.id);
-          setActiveTitle(first.title);
-          setActiveContent(first.content);
-          setLastSaved(first.title, first.content);
-          titleIsManual.current = first.title.trim() !== "";
-        }
-      })
-      .catch(console.error);
-  }, []);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (sidebarSearch.trim()) {
-        searchNotes(sidebarSearch).then(setNotes).catch(console.error);
-      } else {
-        fetchNotes().then(setNotes).catch(console.error);
-      }
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [sidebarSearch]);
-
-  useEffect(() => {
-    fetchScratchpad()
-      .then((words) => setScratchpadWords(words.map((w) => w.word)))
-      .catch(console.error);
-  }, []);
-
-  useEffect(() => {
-    fetchChatSessions().then(setChatSessions).catch(console.error);
-  }, []);
-
-  useEffect(() => {
-    if (activeChatSessionId === null) {
-      setChatTurns([]);
-      return;
-    }
-    setChatTurnsLoading(true);
-    setChatError(null);
-    fetchChatTurns(activeChatSessionId)
-      .then(setChatTurns)
-      .catch(console.error)
-      .finally(() => setChatTurnsLoading(false));
-  }, [activeChatSessionId]);
-
-  useEffect(() => {
     if (justRegistered) setShowOnboarding(true);
   }, [justRegistered]);
 
   // ── Handlers ──
 
   function handleSelectNote(id: number) {
-    const note = notes.find((n) => n.id === id);
-    if (!note) return;
-    setActiveNoteId(note.id);
-    setActiveTitle(note.title);
-    setActiveContent(note.content);
-    setLastSaved(note.title, note.content);
-    setActiveColorGroups(null);
-    titleIsManual.current = note.title.trim() !== "";
+    selectNote(id);
     switchTab("write");
   }
 
   async function handleNewNote() {
     try {
-      const note = await createNote("", "");
-      setNotes((prev) => [note, ...prev]);
-      setActiveNoteId(note.id);
-      setActiveTitle(note.title);
-      setActiveContent(note.content);
-      setLastSaved(note.title, note.content);
-      setActiveColorGroups(null);
-      titleIsManual.current = false;
+      await newNote();
     } catch (e) {
       console.error(e);
     }
@@ -262,62 +164,17 @@ export default function App({ user, onLogout, justRegistered }: AppProps) {
 
   async function handleDeleteNote(id: number) {
     try {
-      await deleteNote(id);
-      const remaining = notes.filter((n) => n.id !== id);
-      setNotes(remaining);
-      if (activeNoteId === id) {
-        if (remaining.length > 0) {
-          handleSelectNote(remaining[0].id);
-        } else {
-          setActiveNoteId(null);
-          setActiveTitle("");
-          setActiveContent("");
-        }
-      }
+      await removeNote(id);
     } catch (e) {
       console.error(e);
     }
   }
 
   async function handleRenameNote(id: number, title: string) {
-    const note = notes.find((n) => n.id === id);
-    if (!note) return;
     try {
-      await updateNote(id, title, note.content);
-      setNotes((prev) => prev.map((n) => (n.id === id ? { ...n, title } : n)));
-      if (activeNoteId === id) {
-        setActiveTitle(title);
-        titleIsManual.current = title.trim() !== "";
-      }
+      await renameNote(id, title);
     } catch (e) {
       console.error(e);
-    }
-  }
-
-  function handleContentChange(content: string) {
-    setActiveContent(content);
-    if (!titleIsManual.current) {
-      const firstLine = content.split("\n").find((l) => l.trim().length > 0) ?? "";
-      const words = firstLine.trim().split(/\s+/).filter(Boolean);
-      const autoTitle = words.length
-        ? words.slice(0, 6).join(" ") + (words.length > 6 ? "…" : "")
-        : "";
-      setActiveTitle(autoTitle);
-      if (activeNoteId !== null) {
-        setNotes((prev) =>
-          prev.map((n) => (n.id === activeNoteId ? { ...n, title: autoTitle } : n))
-        );
-      }
-    }
-  }
-
-  function handleTitleChange(title: string) {
-    setActiveTitle(title);
-    titleIsManual.current = title.trim() !== "";
-    if (activeNoteId !== null) {
-      setNotes((prev) =>
-        prev.map((n) => (n.id === activeNoteId ? { ...n, title } : n))
-      );
     }
   }
 
@@ -344,17 +201,6 @@ export default function App({ user, onLogout, justRegistered }: AppProps) {
     setActiveColorGroups((prev) => (prev === null ? new Set<number>() : null));
   }
 
-  function addToScratchpad(word: string) {
-    setScratchpadWords((prev) => (prev.includes(word) ? prev : [...prev, word]));
-    setScratchpadOpen(true);
-    pinScratchpadWord(word).catch(console.error);
-  }
-
-  function removeFromScratchpad(word: string) {
-    setScratchpadWords((prev) => prev.filter((w) => w !== word));
-    unpinScratchpadWord(word).catch(console.error);
-  }
-
   function switchTab(tab: "write" | "library" | "chat" | "admin") {
     if (tab === activeTab) return;
     if (tab === "chat") {
@@ -365,214 +211,7 @@ export default function App({ user, onLogout, justRegistered }: AppProps) {
     setActiveTab(tab);
   }
 
-  function openChatSession(id: number) {
-    setActiveChatSessionId(id);
-    if (activeTab !== "chat" && chatDock.mode === "closed") {
-      chatDockCtl.openFloating();
-    }
-  }
-
-  async function handleNewChatSession() {
-    try {
-      const session = await createChatSession();
-      setChatSessions((prev) => [session, ...prev]);
-      openChatSession(session.id);
-    } catch (e) {
-      console.error(e);
-    }
-  }
-
-  async function handleDeleteChatSession(id: number) {
-    try {
-      await deleteChatSession(id);
-      setChatSessions((prev) => prev.filter((s) => s.id !== id));
-      if (activeChatSessionId === id) {
-        setActiveChatSessionId(null);
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  }
-
-  async function handleRenameChatSession(id: number, title: string) {
-    try {
-      const session = await renameChatSession(id, title);
-      setChatSessions((prev) => prev.map((s) => (s.id === id ? session : s)));
-    } catch (e) {
-      console.error(e);
-    }
-  }
-
-  async function handleSendChatMessage(content: string) {
-    if (activeChatSessionId === null) return;
-    const sessionId = activeChatSessionId;
-    // Treat this as an edit-suggestion request if the sent text still starts with what
-    // "Change this" generated - if the user deleted/replaced that part, send as a normal
-    // message. Anything appended after it (e.g. a pasted-in full note via "Insert full
-    // note") is passed through as extra context rather than breaking detection.
-    const pending = pendingEditRef.current;
-    const editMeta =
-      pending && content.trim().startsWith(pending.displayPrompt.trim()) ? pending : null;
-    pendingEditRef.current = null;
-    const displayText = content;
-    const extraContext = editMeta
-      ? content.trim().slice(editMeta.displayPrompt.trim().length).trim() || undefined
-      : undefined;
-    const wireContent = editMeta ? buildEditWirePrompt(editMeta.original, extraContext) : content;
-    setChatError(null);
-    setChatSending(true);
-    setChatPendingUserText(displayText);
-    setChatStreamingText("");
-    setNoteContextHint(false);
-    try {
-      await streamChatTurn(sessionId, wireContent, {
-        onUserTurn: (turn) => {
-          setChatTurns((prev) => [...prev, turn]);
-          setChatPendingUserText(null);
-          if (displayText.includes("Full note:\n")) {
-            setNoteContextSessions((prev) => new Set(prev).add(sessionId));
-          }
-          if (editMeta) {
-            setUserTurnDisplay((prev) => {
-              const next = new Map(prev);
-              next.set(turn.id, displayText);
-              return next;
-            });
-            activeEditContextRef.current = {
-              sessionId,
-              noteId: editMeta.noteId,
-              start: editMeta.start,
-              end: editMeta.end,
-              original: editMeta.original,
-            };
-          }
-        },
-        onDelta: (text) => {
-          setChatStreamingText((prev) => (prev ?? "") + text);
-        },
-        onDone: (assistantTurn, sessionTitle) => {
-          setChatTurns((prev) => [...prev, assistantTurn]);
-          setChatStreamingText(null);
-          if (sessionTitle) {
-            setChatSessions((prev) =>
-              prev.map((s) => (s.id === sessionId ? { ...s, title: sessionTitle } : s))
-            );
-          }
-          const ctx = activeEditContextRef.current;
-          if (ctx && ctx.sessionId === sessionId) {
-            const rewrite = extractRewrite(assistantTurn.content);
-            if (rewrite !== null) {
-              setAssistantEditText((prev) => {
-                const next = new Map(prev);
-                next.set(assistantTurn.id, rewrite);
-                return next;
-              });
-              setEditSuggestions((prev) => {
-                const next = new Map(prev);
-                next.set(assistantTurn.id, {
-                  noteId: ctx.noteId,
-                  start: ctx.start,
-                  end: ctx.end,
-                  original: ctx.original,
-                  suggestion: rewrite,
-                });
-                return next;
-              });
-              activeEditContextRef.current = null;
-            }
-            // No markers found (e.g. the model asked a clarifying question) - leave the
-            // context active so a later reply in this thread can still be picked up.
-          }
-        },
-      });
-    } catch (e) {
-      setChatError(e instanceof Error ? e.message : "Failed to send message");
-    } finally {
-      setChatSending(false);
-      setChatPendingUserText(null);
-      setChatStreamingText(null);
-    }
-  }
-
-  async function handleChangeThisRequest(text: string, start: number, end: number) {
-    if (activeNoteId === null) return;
-    const noteId = activeNoteId;
-    const displayPrompt = buildEditDisplayPrompt(text);
-    pendingEditRef.current = { noteId, start, end, original: text, displayPrompt };
-    const sessionId = await injectIntoChat(displayPrompt);
-    if (sessionId !== null && !noteContextSessions.has(sessionId)) {
-      setNoteContextHint(true);
-    }
-  }
-
-  function handleAcceptEditSuggestion(turnId: number) {
-    const meta = editSuggestions.get(turnId);
-    if (!meta || meta.noteId !== activeNoteId) return;
-    const range = locateEditRange(activeContent, meta);
-    if (!range) return;
-    const [start, end] = range;
-    if (activeTab === "write" && editorRef.current) {
-      editorRef.current.replaceRange(start, end, meta.suggestion);
-    } else {
-      setActiveContent((prev) => prev.slice(0, start) + meta.suggestion + prev.slice(end));
-    }
-    setEditSuggestions((prev) => {
-      const next = new Map(prev);
-      next.delete(turnId);
-      return next;
-    });
-  }
-
-  function handleRejectEditSuggestion(turnId: number) {
-    setEditSuggestions((prev) => {
-      const next = new Map(prev);
-      next.delete(turnId);
-      return next;
-    });
-  }
-
-  async function injectIntoChat(text: string, label?: string): Promise<number | null> {
-    let sessionId = activeChatSessionId;
-    if (sessionId === null) {
-      try {
-        const session = await createChatSession();
-        setChatSessions((prev) => [session, ...prev]);
-        sessionId = session.id;
-        setActiveChatSessionId(sessionId);
-      } catch (e) {
-        console.error(e);
-        return null;
-      }
-    }
-    const injected = label ? `${label}:\n${text}` : text;
-    setChatInject({ text: injected, seq: Date.now() });
-    if (activeTab !== "chat" && chatDock.mode === "closed") {
-      chatDockCtl.openFloating();
-    }
-    return sessionId;
-  }
-
-  // Edit suggestions currently anchored in the active note's content - recomputed
-  // live so a stale/moved anchor (note switched away and edited, range no longer
-  // found) simply stops rendering, rather than needing explicit invalidation.
-  const resolvedEdits: ResolvedEdit[] = useMemo(() => {
-    const out: ResolvedEdit[] = [];
-    for (const [turnId, meta] of editSuggestions) {
-      if (meta.noteId !== activeNoteId) continue;
-      const range = locateEditRange(activeContent, meta);
-      if (!range) continue;
-      out.push({ turnId, start: range[0], end: range[1], original: meta.original, suggestion: meta.suggestion });
-    }
-    return out;
-  }, [editSuggestions, activeContent, activeNoteId]);
-  const resolvedTurnIds = useMemo(() => new Set(resolvedEdits.map((e) => e.turnId)), [resolvedEdits]);
-
-  const lineCount = activeContent
-    ? activeContent.split("\n").filter((l) => l.trim().length > 0).length
-    : 0;
-
-  const themeIcon =
-    themeMode === "dark" ? "☀" : themeMode === "light" ? "🖥" : "◑";
+  const themeToggleTitle = `Theme: ${themeMode} — click to cycle`;
 
   const dockedInMain = chatDock.mode === "main" && activeTab !== "chat";
   const dockedInSide = chatDock.mode === "side" && activeTab !== "chat";
@@ -750,12 +389,8 @@ export default function App({ user, onLogout, justRegistered }: AppProps) {
           </button>
           <button
             className="theme-toggle"
-            onClick={() =>
-              setThemeMode((m) =>
-                m === "light" ? "dark" : m === "dark" ? "auto" : "light"
-              )
-            }
-            title={`Theme: ${themeMode} — click to cycle`}
+            onClick={cycleTheme}
+            title={themeToggleTitle}
             aria-label="Cycle theme"
           >
             {themeIcon}
