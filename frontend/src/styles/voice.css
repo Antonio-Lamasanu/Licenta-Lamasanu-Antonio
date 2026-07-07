@@ -1,0 +1,98 @@
+/* ─── Voice panel ─── */
+.voice-pane {
+  display: flex;
+  flex-direction: column;
+  padding: 24px 36px;
+  overflow: hidden;
+  background: var(--bg);
+  height: 100%;
+  gap: 20px;
+}
+
+.voice-header { flex-shrink: 0; }
+
+.voice-subtitle {
+  font-size: 13px;
+  color: var(--ink-3);
+  margin: 0;
+}
+
+.voice-controls {
+  display: flex;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.voice-record-btn {
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  border: 2px solid var(--ink);
+  border-radius: var(--r-md);
+  background: none;
+  color: var(--ink);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.voice-record-btn:hover { background: var(--bg-soft); }
+.voice-record-btn--active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+.voice-insert-btn {
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  border: 2px solid var(--accent-2);
+  border-radius: var(--r-md);
+  background: none;
+  color: var(--accent-2);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.voice-insert-btn:hover { background: var(--bg-soft); }
+
+.voice-error {
+  color: var(--accent);
+  font-size: 13px;
+  margin: 0;
+}
+
+.voice-transcript {
+  flex: 1;
+  overflow-y: auto;
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-md);
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 200px;
+}
+
+.voice-line {
+  font-family: var(--serif);
+  font-size: 19px;
+  line-height: 1.6;
+  color: var(--ink);
+}
+.voice-line--interim { color: var(--ink-4); font-style: italic; }
+
+.voice-placeholder {
+  font-size: 13px;
+  color: var(--ink-4);
+  font-style: italic;
+  align-self: center;
+  margin: auto;
+}
+
+.voice-unsupported {
+  padding: 40px;
+  text-align: center;
+  color: var(--ink-3);
+  font-size: 14px;
+  line-height: 1.8;
+}

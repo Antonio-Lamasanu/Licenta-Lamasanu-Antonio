@@ -1,0 +1,82 @@
+/* ─── Selection action menu (LyricEditor) ─── */
+.selection-action-menu {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow);
+  padding: 8px 10px;
+  z-index: 20;
+  max-width: 400px;
+}
+
+.selection-action-btn {
+  font-size: 11.5px;
+  font-weight: 500;
+  padding: 5px 10px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--rule);
+  background: var(--bg-soft);
+  color: var(--ink-2);
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.selection-action-btn:hover { background: var(--bg-deep); }
+.selection-action-btn:disabled { opacity: 0.6; cursor: default; }
+
+.selection-action-btn--primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg);
+}
+.selection-action-btn--primary:hover { background: var(--accent-2); border-color: var(--accent-2); }
+
+/* ─── AI edit diff (inline in chat, "Change this" flow) ─── */
+.edit-diff-text {
+  font-family: var(--serif);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+
+.diff-removed {
+  color: var(--ink-4);
+  text-decoration: line-through;
+}
+
+.diff-added {
+  background: rgba(120, 200, 140, 0.28);
+  border-radius: 2px;
+}
+.theme-dark .diff-added { background: rgba(120, 200, 140, 0.22); }
+
+.edit-diff-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* ─── AI edit diff (inline in the editor itself, Claude-Code style) ─── */
+.inline-edit-diff .diff-removed,
+.inline-edit-diff .diff-added {
+  border-radius: 3px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+.inline-edit-actions-float {
+  position: absolute;
+  display: flex;
+  gap: 6px;
+  z-index: 5;
+}
+.inline-edit-actions-float .selection-action-btn {
+  font-size: 10.5px;
+  padding: 3px 8px;
+}

@@ -1,0 +1,149 @@
+/* ─── App shell ─── */
+.app {
+  display: grid;
+  grid-template-rows: 56px 1fr;
+  height: 100vh;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  overflow: hidden;
+}
+
+/* ─── Topbar ─── */
+.topbar {
+  display: grid;
+  grid-template-columns: 280px 1fr 280px;
+  align-items: center;
+  background: var(--panel);
+  border-bottom: 1px solid var(--rule);
+  box-shadow: var(--shadow-soft);
+  z-index: 10;
+}
+
+.topbar-brand {
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  border-right: 1px solid var(--rule);
+  height: 100%;
+}
+
+.wordmark {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink);
+}
+
+.wordmark-logo {
+  height: 28px;
+  width: auto;
+  flex-shrink: 0;
+  display: block;
+}
+
+.wordmark-text {
+  font-family: var(--serif);
+  font-size: 22px;
+  font-weight: 500;
+  font-style: italic;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+.wordmark-rhy {
+  color: var(--accent);
+}
+
+.topbar-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 100%;
+}
+
+.topbar-tab {
+  padding: 6px 14px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--ink-3);
+  background: none;
+  border: none;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+
+.topbar-tab:hover { color: var(--ink-2); background: var(--bg-soft); }
+
+.topbar-tab--active {
+  color: var(--ink);
+  background: var(--bg-soft);
+}
+
+.topbar-controls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 0 16px;
+  height: 100%;
+  border-left: 1px solid var(--rule);
+}
+
+.save-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: var(--ink-3);
+  font-family: var(--mono);
+}
+
+.save-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--rule-2);
+}
+.save-dot.saving { background: var(--accent); opacity: 0.7; }
+.save-dot.saved  { background: var(--accent-2); }
+.save-dot.error  { background: #C0392B; }
+
+.theme-toggle {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid var(--rule);
+  background: var(--bg-soft);
+  color: var(--ink-3);
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+.theme-toggle:hover { background: var(--bg-deep); }
+.theme-toggle--active {
+  background: var(--accent-2);
+  border-color: var(--accent-2);
+  color: var(--panel);
+}
+.theme-toggle--active:hover { background: var(--accent-2); opacity: 0.9; }
+
+/* ─── Main layout ─── */
+.layout {
+  display: grid;
+  grid-template-columns: 280px 1fr 360px;
+  overflow: hidden;
+  height: 100%;
+  transition: grid-template-columns 0.22s ease;
+}
+
+/* ─── Responsive: narrow viewport ─── */
+@media (max-width: 899px) {
+  .app { overflow-x: hidden; }
+  .layout { overflow-x: hidden; }
+}

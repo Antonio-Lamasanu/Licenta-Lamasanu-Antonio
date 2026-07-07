@@ -1,0 +1,43 @@
+/* ─── Design tokens: light theme ─── */
+:root {
+  --accent-deep: #692719;
+  --bg:        #F4EFE6;
+  --bg-soft:   #EBE3D5;
+  --bg-deep:   #DFD5C2;
+  --panel:     #FBF7EE;
+  --ink:       #1B1A18;
+  --ink-2:     #45413B;
+  --ink-3:     #6E665A;
+  --ink-4:     #9A8F7C;
+  --rule:      #D6CDB9;
+  --rule-2:    #C7BCA3;
+  --accent:    #B8341A;
+  --accent-2:  #2E5A4A;
+  --shadow:    0 1px 0 rgba(27,26,24,0.04), 0 8px 30px -16px rgba(27,26,24,0.18);
+  --shadow-soft: 0 1px 0 rgba(27,26,24,0.04);
+  --serif: "Newsreader", "Crimson Pro", Georgia, "Times New Roman", serif;
+  --sans:  "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --mono:  "JetBrains Mono", "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --r-sm:  6px;
+  --r-md:  10px;
+  --r-lg:  14px;
+}
+
+/* ─── Design tokens: dark theme ─── */
+.theme-dark {
+  --accent-deep: #EAAF97;
+  --bg:        #14171C;
+  --bg-soft:   #1B1F26;
+  --bg-deep:   #0E1116;
+  --panel:     #1A1E25;
+  --ink:       #ECE5D2;
+  --ink-2:     #C2BBA8;
+  --ink-3:     #8E8775;
+  --ink-4:     #5E5849;
+  --rule:      #2A2F38;
+  --rule-2:    #353B45;
+  --accent:    #E97A5C;
+  --accent-2:  #7CC2A8;
+  --shadow:    0 1px 0 rgba(0,0,0,0.4), 0 12px 30px -12px rgba(0,0,0,0.6);
+  --shadow-soft: 0 1px 0 rgba(0,0,0,0.3);
+}

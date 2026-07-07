@@ -1,0 +1,66 @@
+/* ─── Resizable split (left sidebar, docked chat, rhyme panel merge) ─── */
+.resizable-split {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+.resizable-split--column { flex-direction: column; }
+.resizable-split--row { flex-direction: row; }
+
+.resizable-split-pane {
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.resizable-split-pane--fill {
+  flex: 1;
+  flex-shrink: 1;
+}
+
+.resizable-split-handle {
+  flex-shrink: 0;
+  background: var(--bg-soft);
+  position: relative;
+}
+.resizable-split-handle--column {
+  height: 7px;
+  cursor: row-resize;
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+}
+.resizable-split-handle--row {
+  width: 7px;
+  cursor: col-resize;
+  border-left: 1px solid var(--rule);
+  border-right: 1px solid var(--rule);
+}
+.resizable-split-handle:hover,
+.resizable-split-handle:active {
+  background: var(--bg-deep);
+}
+.resizable-split-handle::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  border-radius: 2px;
+  background: var(--ink-4);
+  opacity: 0.6;
+}
+.resizable-split-handle--column::after { width: 28px; height: 3px; }
+.resizable-split-handle--row::after { width: 3px; height: 28px; }
+
+.sidebar-notes-pane {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}

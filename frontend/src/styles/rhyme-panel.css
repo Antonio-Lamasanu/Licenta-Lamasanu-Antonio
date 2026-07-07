@@ -1,0 +1,355 @@
+/* ─── Rhyme panel ─── */
+.rhyme-panel-slot {
+  background: var(--panel);
+  border-left: 1px solid var(--rule);
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.rhyme-panel {
+  background: var(--panel);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  width: 100%;
+}
+
+.rhyme-panel--collapsed {
+  align-items: center;
+}
+
+.rhyme-lip-btn {
+  margin-top: 14px;
+  padding: 4px;
+  background: none;
+  border: none;
+  color: var(--ink-4);
+  font-size: 16px;
+  cursor: pointer;
+  border-radius: var(--r-sm);
+  line-height: 1;
+}
+.rhyme-lip-btn:hover { color: var(--ink-2); background: var(--bg-soft); }
+
+.rhyme-panel-head {
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--rule);
+  flex-shrink: 0;
+}
+
+.rhyme-eyebrow {
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-4);
+  margin-bottom: 8px;
+}
+
+.rhyme-follow-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.rhyme-follow-label {
+  font-size: 12.5px;
+  color: var(--ink-2);
+}
+
+.rhyme-toggle {
+  position: relative;
+  width: 32px;
+  height: 18px;
+  border-radius: 100px;
+  border: none;
+  cursor: pointer;
+  background: var(--rule);
+  transition: background 0.2s;
+}
+
+.rhyme-toggle--on { background: var(--accent-2); }
+
+.rhyme-toggle-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: white;
+  transition: transform 0.2s;
+  pointer-events: none;
+}
+
+.rhyme-toggle--on .rhyme-toggle-knob { transform: translateX(14px); }
+
+.rhyme-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-soft);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-sm);
+  padding: 6px 10px;
+}
+
+.rhyme-search-icon { color: var(--ink-4); font-size: 12px; }
+
+.rhyme-search-input {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  font-size: 13px;
+  color: var(--ink);
+  font-family: var(--sans);
+}
+
+.rhyme-search-input::placeholder { color: var(--ink-4); }
+
+.rhyme-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--rule);
+  flex-shrink: 0;
+}
+
+.rhyme-tab {
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--ink-3);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: color 0.15s;
+  margin-bottom: -1px;
+}
+
+.rhyme-tab:hover { color: var(--ink-2); }
+
+.rhyme-tab--active {
+  color: var(--ink);
+  font-weight: 500;
+  border-bottom-color: var(--ink);
+}
+
+.rhyme-results {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.rhyme-section-label {
+  padding: 10px 14px 4px;
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-4);
+  flex-shrink: 0;
+}
+
+.rhyme-section-panel {
+  border-bottom: 1px solid var(--rule);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.rhyme-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  cursor: pointer;
+  background: none;
+  border: none;
+  width: 100%;
+  text-align: left;
+  transition: background 0.1s;
+}
+
+.rhyme-section-header:hover { background: var(--bg-soft); }
+
+.rhyme-section-title {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--ink-2);
+}
+
+.rhyme-section-body {
+  padding: 4px 14px 10px;
+  height: 35vh;
+  min-height: 35vh;
+  max-height: 35vh;
+  overflow-y: auto;
+}
+
+.rhyme-chip-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.rhyme-chip {
+  padding: 3px 8px;
+  background: var(--bg-soft);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-sm);
+  font-family: var(--serif);
+  font-size: 13px;
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.rhyme-chip:hover { background: var(--bg-deep); }
+.rhyme-chip--other { opacity: 0.55; }
+
+.rhyme-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  color: var(--ink-4);
+  padding: 24px;
+  text-align: center;
+}
+
+.rhyme-panel-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  border-top: 1px solid var(--rule);
+  flex-shrink: 0;
+}
+
+.rhyme-pin-btn {
+  font-size: 12px;
+  color: var(--ink-3);
+  background: none;
+  border: 1px solid var(--rule);
+  border-radius: var(--r-sm);
+  padding: 3px 10px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.rhyme-pin-btn:hover { color: var(--ink-2); border-color: var(--rule-2); }
+.rhyme-pin-btn:disabled { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
+
+.rhyme-meta {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: var(--ink-4);
+}
+
+/* ─── Wave 2: Rhyme mode row ─── */
+.rhyme-mode-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--rule);
+  flex-shrink: 0;
+}
+
+.rhyme-mode-select {
+  flex: 1;
+  background: var(--bg-soft);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-sm);
+  color: var(--ink-2);
+  font-family: var(--sans);
+  font-size: 12px;
+  padding: 4px 8px;
+  cursor: pointer;
+  outline: none;
+}
+.rhyme-mode-select:focus { border-color: var(--ink-4); }
+
+.rhyme-save-btn {
+  padding: 4px 10px;
+  font-size: 11.5px;
+  color: var(--ink-3);
+  background: none;
+  border: 1px solid var(--rule);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+.rhyme-save-btn:hover { color: var(--accent); border-color: var(--accent); }
+.rhyme-save-btn--error {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* ─── Wave 2: Collapse toggle ─── */
+.rhyme-eyebrow-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.rhyme-collapse-btn {
+  padding: 2px 6px;
+  background: none;
+  border: none;
+  color: var(--ink-4);
+  cursor: pointer;
+  border-radius: var(--r-sm);
+  font-size: 14px;
+}
+.rhyme-collapse-btn:hover { color: var(--ink-2); background: var(--bg-soft); }
+
+/* ─── Wave 2: Chip pin button ─── */
+.rhyme-chip-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.rhyme-chip-pin {
+  display: none;
+  position: absolute;
+  right: -8px;
+  top: -6px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: var(--panel);
+  font-size: 10px;
+  line-height: 1;
+  border: none;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+}
+
+.rhyme-chip-wrap:hover .rhyme-chip-pin {
+  display: flex;
+}
+
+/* ─── Rhyme panel collapsed state ─── */
+.rhyme-panel-collapsed {
+  background: var(--panel);
+  border-left: 1px solid var(--rule);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}

@@ -1,0 +1,31 @@
+/* ─── Base reset ─── */
+html, body, #root {
+  height: 100%;
+  margin: 0;
+}
+
+* { box-sizing: border-box; }
+
+/* ─── Custom scrollbars (global) ─── */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--ink-4) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--rule-2);
+  border-radius: 3px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--ink-4);
+}
