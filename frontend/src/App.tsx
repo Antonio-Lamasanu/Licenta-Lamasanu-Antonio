@@ -6,9 +6,13 @@ import LibraryPanel from "./components/LibraryPanel";
 import AdminPanel from "./components/AdminPanel";
 import Scratchpad from "./components/Scratchpad";
 import ChatPanel from "./components/ChatPanel";
+import ChatDockHeader from "./components/ChatDockHeader";
+import FloatingChatWindow from "./components/FloatingChatWindow";
+import ResizableSplit from "./components/ResizableSplit";
 import OnboardingModal from "./components/OnboardingModal";
 import PreferencesModal from "./components/PreferencesModal";
 import { useAutoSave } from "./hooks/useAutoSave";
+import { useChatDock } from "./hooks/useChatDock";
 import { fetchNotes, createNote, deleteNote, updateNote, searchNotes } from "./api/notes";
 import { fetchScratchpad, pinScratchpadWord, unpinScratchpadWord } from "./api/scratchpad";
 import {
@@ -98,6 +102,10 @@ export default function App({ user, onLogout, justRegistered }: AppProps) {
 
   const editorRef = useRef<LyricEditorHandle>(null);
   const layoutRef = useRef<HTMLDivElement>(null);
+  const mainAreaRef = useRef<HTMLDivElement>(null);
+  const rightColumnRef = useRef<HTMLDivElement>(null);
+  const chatDockCtl = useChatDock(mainAreaRef, rightColumnRef);
+  const { dock: chatDock, preview: chatDockPreview } = chatDockCtl;
 
   // ── Effects ──
 
@@ -374,8 +382,102 @@ export default function App({ user, onLogout, justRegistered }: AppProps) {
   const themeIcon =
     themeMode === "dark" ? "☀" : themeMode === "light" ? "🖥" : "◑";
 
-  const col3 = activeTab === "write" ? (rhymePanelOpen ? "360px" : "48px") : "0";
+  const rightColumnVisible = (activeTab === "write" && rhymePanelOpen) || chatDock.mode === "side";
+  const col3 = rightColumnVisible ? "360px" : activeTab === "write" ? "48px" : "0";
   const gridCols = `${sidebarOpen ? "280px" : "48px"} 1fr ${col3}`;
+
+  const chatBodyNode = (
+    <ChatPanel
+      session={chatSessions.find((s) => s.id === activeChatSessionId) ?? null}
+      turns={chatTurns}
+      loadingTurns={chatTurnsLoading}
+      sending={chatSending}
+      pendingUserText={chatPendingUserText}
+      streamingText={chatStreamingText}
+      error={chatError}
+      onSend={handleSendChatMessage}
+      activeNoteContent={activeContent}
+      injectText={chatInject}
+    />
+  );
+
+  function renderDockedChatPane() {
+    return (
+      <div className="chat-dock-pane">
+        <ChatDockHeader onDragStart={chatDockCtl.startDrag} onClose={chatDockCtl.close} />
+        <div className="chat-dock-pane-body">{chatBodyNode}</div>
+      </div>
+    );
+  }
+
+  const tabContent = (
+    <>
+      {activeTab === "write" && (
+        <>
+          {activeNoteId === null ? (
+            <div className="editor-empty">Select a note or create a new one</div>
+          ) : (
+            <>
+              <div className="editor-header">
+                <input
+                  className="lyric-title"
+                  placeholder="Untitled"
+                  value={activeTitle}
+                  onChange={(e) => handleTitleChange(e.target.value)}
+                />
+                <div className="editor-meta">
+                  draft · {lineCount} {lineCount === 1 ? "line" : "lines"}
+                </div>
+              </div>
+              <LyricEditor
+                ref={editorRef}
+                content={activeContent}
+                onContentChange={handleContentChange}
+                onSelectionChange={(q) => { if (!autoMode) setRhymeQuery(q); }}
+                onCursorChange={(q) => { if (autoMode) setRhymeQuery(q); }}
+                isDarkTheme={isDark}
+                activeColorGroups={activeColorGroups}
+                onGroupsChange={setActiveGroups}
+                onModeChange={setEditorMode}
+                onSendToChat={handleSendToChat}
+                onSearchRhymes={handleSearchRhymesFromSelection}
+              />
+            </>
+          )}
+        </>
+      )}
+
+      {activeTab === "library" && (
+        <LibraryPanel
+          isDarkTheme={isDark}
+          onSearchSelect={(q) => {
+            setRhymeQuery(q);
+            setActiveTab("write");
+            setRhymePanelOpen(true);
+          }}
+        />
+      )}
+
+      {activeTab === "chat" && chatBodyNode}
+
+      {activeTab === "admin" && user.is_admin && (
+        <AdminPanel currentUserId={user.id} />
+      )}
+    </>
+  );
+
+  const rhymeDictionaryNode = (
+    <RhymeDictionary
+      isOpen={rhymePanelOpen}
+      query={rhymeQuery}
+      onQueryChange={setRhymeQuery}
+      autoMode={autoMode}
+      onAutoModeToggle={() => setAutoMode((o) => !o)}
+      onCollapse={() => setRhymePanelOpen(false)}
+      onExpand={() => setRhymePanelOpen(true)}
+      onPin={(word) => addToScratchpad(word)}
+    />
+  );
 
   return (
     <div className={`app${isDark ? " theme-dark" : ""}`}>
@@ -418,6 +520,14 @@ export default function App({ user, onLogout, justRegistered }: AppProps) {
               <><span className="save-dot error" />Save failed</>
             )}
           </div>
+          <button
+            className={`theme-toggle${chatDock.mode !== "closed" ? " theme-toggle--active" : ""}`}
+            onClick={chatDockCtl.toggle}
+            title="Toggle floating chat window"
+            aria-label="Toggle chat window"
+          >
+            💬
+          </button>
           <button
             className="theme-toggle"
             onClick={() => setShowPreferences(true)}
@@ -479,86 +589,62 @@ export default function App({ user, onLogout, justRegistered }: AppProps) {
           onDeleteChatSession={handleDeleteChatSession}
         />
 
-        <main className="editor-pane">
-          {activeTab === "write" && (
-            <>
-              {activeNoteId === null ? (
-                <div className="editor-empty">Select a note or create a new one</div>
-              ) : (
-                <>
-                  <div className="editor-header">
-                    <input
-                      className="lyric-title"
-                      placeholder="Untitled"
-                      value={activeTitle}
-                      onChange={(e) => handleTitleChange(e.target.value)}
-                    />
-                    <div className="editor-meta">
-                      draft · {lineCount} {lineCount === 1 ? "line" : "lines"}
-                    </div>
-                  </div>
-                  <LyricEditor
-                    ref={editorRef}
-                    content={activeContent}
-                    onContentChange={handleContentChange}
-                    onSelectionChange={(q) => { if (!autoMode) setRhymeQuery(q); }}
-                    onCursorChange={(q) => { if (autoMode) setRhymeQuery(q); }}
-                    isDarkTheme={isDark}
-                    activeColorGroups={activeColorGroups}
-                    onGroupsChange={setActiveGroups}
-                    onModeChange={setEditorMode}
-                    onSendToChat={handleSendToChat}
-                    onSearchRhymes={handleSearchRhymesFromSelection}
-                  />
-                </>
-              )}
-            </>
-          )}
-
-          {activeTab === "library" && (
-            <LibraryPanel
-              isDarkTheme={isDark}
-              onSearchSelect={(q) => {
-                setRhymeQuery(q);
-                setActiveTab("write");
-                setRhymePanelOpen(true);
-              }}
+        <main className="editor-pane" ref={mainAreaRef}>
+          {chatDock.mode === "main" ? (
+            <ResizableSplit
+              direction={chatDock.side === "left" || chatDock.side === "right" ? "row" : "column"}
+              first={
+                chatDock.side === "left" || chatDock.side === "top" ? renderDockedChatPane() : tabContent
+              }
+              second={
+                chatDock.side === "left" || chatDock.side === "top" ? tabContent : renderDockedChatPane()
+              }
             />
-          )}
-
-          {activeTab === "chat" && (
-            <ChatPanel
-              session={chatSessions.find((s) => s.id === activeChatSessionId) ?? null}
-              turns={chatTurns}
-              loadingTurns={chatTurnsLoading}
-              sending={chatSending}
-              pendingUserText={chatPendingUserText}
-              streamingText={chatStreamingText}
-              error={chatError}
-              onSend={handleSendChatMessage}
-              activeNoteContent={activeContent}
-              injectText={chatInject}
-            />
-          )}
-
-          {activeTab === "admin" && user.is_admin && (
-            <AdminPanel currentUserId={user.id} />
+          ) : (
+            tabContent
           )}
         </main>
 
-        {activeTab === "write" && (
-          <RhymeDictionary
-            isOpen={rhymePanelOpen}
-            query={rhymeQuery}
-            onQueryChange={setRhymeQuery}
-            autoMode={autoMode}
-            onAutoModeToggle={() => setAutoMode((o) => !o)}
-            onCollapse={() => setRhymePanelOpen(false)}
-            onExpand={() => setRhymePanelOpen(true)}
-            onPin={(word) => addToScratchpad(word)}
-          />
-        )}
+        {activeTab === "write" || chatDock.mode === "side" ? (
+          <div className="rhyme-panel-slot" ref={rightColumnRef}>
+            {chatDock.mode === "side" ? (
+              <ResizableSplit
+                direction="column"
+                first={chatDock.side === "top" ? renderDockedChatPane() : rhymeDictionaryNode}
+                second={chatDock.side === "top" ? rhymeDictionaryNode : renderDockedChatPane()}
+              />
+            ) : (
+              rhymeDictionaryNode
+            )}
+          </div>
+        ) : null}
       </div>
+
+      {chatDock.mode === "floating" && (
+        <FloatingChatWindow
+          x={chatDock.x}
+          y={chatDock.y}
+          width={chatDock.width}
+          height={chatDock.height}
+          onDragStart={chatDockCtl.startDrag}
+          onResizeStart={chatDockCtl.startResize}
+          onClose={chatDockCtl.close}
+        >
+          {chatBodyNode}
+        </FloatingChatWindow>
+      )}
+
+      {chatDockPreview && (
+        <div
+          className="chat-dock-preview"
+          style={{
+            left: chatDockPreview.rect.left,
+            top: chatDockPreview.rect.top,
+            width: chatDockPreview.rect.width,
+            height: chatDockPreview.rect.height,
+          }}
+        />
+      )}
 
       {/* ── Scratchpad overlay ── */}
       {scratchpadOpen && (

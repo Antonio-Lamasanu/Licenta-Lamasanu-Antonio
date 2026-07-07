@@ -90,7 +90,8 @@ export default function NotesSidebar({
       {/* ── Full content (hidden when collapsed) ── */}
       {isOpen && (
         <ResizableSplit
-          top={
+          defaultFirstSize={320}
+          first={
             <div className="sidebar-notes-pane">
               <div className="sidebar-head">
                 <div className="sidebar-head-row">
@@ -196,7 +197,7 @@ export default function NotesSidebar({
               </div>
             </div>
           }
-          bottom={
+          second={
             <ChatSessionsPanel
               sessions={chatSessions}
               activeSessionId={activeChatSessionId}
