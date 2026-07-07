@@ -366,8 +366,8 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
 
         const phonemeLabel = effectiveShowPhonemes
           ? wordSyls
-              .map((s) => [s.onset, s.key, s.coda].filter(Boolean).join(" ") || "·")
-              .join("-")
+              .map((s) => [s.onset, s.key, s.coda].filter(Boolean).join("") || "")
+              .join("")
           : "";
 
         return (
@@ -484,7 +484,7 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
           >{effectiveRhymeMode === "highlight" ? "Highlight" : "Underline"}</button>
           <span className="toolbar-hint">
             {effectiveRhymeMode === "highlight"
-              ? "Highlighting perfect rhymes? Underlines mark the slant ones and vice-versa."
+              ? "Highlighting perfect rhymes? Underlines mark the slant ones."
               : "Underlining perfect rhymes? Highlights mark the slant ones."}
           </span>
         </div>
