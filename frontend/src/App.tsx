@@ -50,6 +50,22 @@ interface AppProps {
   justRegistered: boolean;
 }
 
+interface PendingSelectionEdit {
+  noteId: number;
+  start: number;
+  end: number;
+  original: string;
+  prompt: string;
+}
+
+export interface EditSuggestion {
+  noteId: number;
+  start: number;
+  end: number;
+  original: string;
+  suggestion: string;
+}
+
 export default function App({ user, onLogout, justRegistered }: AppProps) {
   // ── Notes state ──
   const [notes, setNotes] = useState<Note[]>([]);
@@ -81,6 +97,8 @@ export default function App({ user, onLogout, justRegistered }: AppProps) {
   const [chatStreamingText, setChatStreamingText] = useState<string | null>(null);
   const [chatError, setChatError] = useState<string | null>(null);
   const [chatInject, setChatInject] = useState<{ text: string; seq: number } | null>(null);
+  const [editSuggestions, setEditSuggestions] = useState<Map<number, EditSuggestion>>(new Map());
+  const pendingEditRef = useRef<PendingSelectionEdit | null>(null);
 
   // ── Onboarding / preferences ──
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -349,6 +367,10 @@ export default function App({ user, onLogout, justRegistered }: AppProps) {
   async function handleSendChatMessage(content: string) {
     if (activeChatSessionId === null) return;
     const sessionId = activeChatSessionId;
+    // Only treat this as an edit-suggestion request if the sent text is exactly what
+    // "Change this" generated - if the user edited or replaced it, send as a normal message.
+    const editMeta = pendingEditRef.current?.prompt === content ? pendingEditRef.current : null;
+    pendingEditRef.current = null;
     setChatError(null);
     setChatSending(true);
     setChatPendingUserText(content);
@@ -370,6 +392,19 @@ export default function App({ user, onLogout, justRegistered }: AppProps) {
               prev.map((s) => (s.id === sessionId ? { ...s, title: sessionTitle } : s))
             );
           }
+          if (editMeta) {
+            setEditSuggestions((prev) => {
+              const next = new Map(prev);
+              next.set(assistantTurn.id, {
+                noteId: editMeta.noteId,
+                start: editMeta.start,
+                end: editMeta.end,
+                original: editMeta.original,
+                suggestion: assistantTurn.content,
+              });
+              return next;
+            });
+          }
         },
       });
     } catch (e) {
@@ -381,7 +416,45 @@ export default function App({ user, onLogout, justRegistered }: AppProps) {
     }
   }
 
-  async function injectIntoChat(text: string) {
+  async function handleChangeThisRequest(text: string, start: number, end: number) {
+    if (activeNoteId === null) return;
+    const noteId = activeNoteId;
+    const prompt = `Rewrite this to be better. Reply with ONLY the rewritten text, no explanation:\n\n"${text}"`;
+    pendingEditRef.current = { noteId, start, end, original: text, prompt };
+    await injectIntoChat(prompt);
+  }
+
+  function handleAcceptEditSuggestion(turnId: number) {
+    const meta = editSuggestions.get(turnId);
+    if (!meta || meta.noteId !== activeNoteId) return;
+    let { start, end } = meta;
+    if (activeContent.slice(start, end) !== meta.original) {
+      const idx = activeContent.indexOf(meta.original);
+      if (idx === -1) return;
+      start = idx;
+      end = idx + meta.original.length;
+    }
+    if (activeTab === "write" && editorRef.current) {
+      editorRef.current.replaceRange(start, end, meta.suggestion);
+    } else {
+      setActiveContent((prev) => prev.slice(0, start) + meta.suggestion + prev.slice(end));
+    }
+    setEditSuggestions((prev) => {
+      const next = new Map(prev);
+      next.delete(turnId);
+      return next;
+    });
+  }
+
+  function handleRejectEditSuggestion(turnId: number) {
+    setEditSuggestions((prev) => {
+      const next = new Map(prev);
+      next.delete(turnId);
+      return next;
+    });
+  }
+
+  async function injectIntoChat(text: string, label?: string) {
     let sessionId = activeChatSessionId;
     if (sessionId === null) {
       try {
@@ -394,7 +467,8 @@ export default function App({ user, onLogout, justRegistered }: AppProps) {
         return;
       }
     }
-    setChatInject({ text, seq: Date.now() });
+    const injected = label ? `${label}:\n${text}` : text;
+    setChatInject({ text: injected, seq: Date.now() });
     if (activeTab !== "chat" && chatDock.mode === "closed") {
       chatDockCtl.openFloating();
     }
@@ -427,6 +501,9 @@ export default function App({ user, onLogout, justRegistered }: AppProps) {
         injectText={chatInject}
         showMinimizeButton={showMinimize}
         onMinimize={() => switchTab("write")}
+        editSuggestions={editSuggestions}
+        onAcceptEdit={handleAcceptEditSuggestion}
+        onRejectEdit={handleRejectEditSuggestion}
       />
     );
   }
@@ -459,8 +536,8 @@ export default function App({ user, onLogout, justRegistered }: AppProps) {
                   draft · {lineCount} {lineCount === 1 ? "line" : "lines"}
                 </div>
                 <button
-                  className="editor-meta-btn"
-                  onClick={() => injectIntoChat(activeContent)}
+                  className="editor-meta-btn editor-meta-btn--highlight"
+                  onClick={() => injectIntoChat(activeContent, "Full note")}
                   disabled={!activeContent}
                   title="Insert this note into the current chat"
                 >
@@ -478,6 +555,7 @@ export default function App({ user, onLogout, justRegistered }: AppProps) {
                 onGroupsChange={setActiveGroups}
                 onModeChange={setEditorMode}
                 onSendToChat={injectIntoChat}
+                onChangeThis={handleChangeThisRequest}
               />
             </>
           )}
@@ -655,6 +733,7 @@ export default function App({ user, onLogout, justRegistered }: AppProps) {
           y={chatDock.y}
           width={chatDock.width}
           height={chatDock.height}
+          isDark={isDark}
           onDragStart={chatDockCtl.startDrag}
           onResizeStart={chatDockCtl.startResize}
           onClose={chatDockCtl.close}

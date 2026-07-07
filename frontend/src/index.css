@@ -527,6 +527,20 @@ html, body, #root {
   font-family: var(--mono);
 }
 
+.editor-meta-btn--highlight {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--rule-2);
+  background: var(--panel);
+  color: var(--ink-2);
+  box-shadow: var(--shadow-soft);
+  cursor: pointer;
+}
+.editor-meta-btn--highlight:hover { background: var(--bg-deep); border-color: var(--accent); color: var(--accent); }
+.editor-meta-btn--highlight:disabled { opacity: 0.5; cursor: default; }
+
 /* ─── Toolbar ─── */
 .editor-toolbar {
   display: flex;
@@ -952,30 +966,26 @@ html, body, #root {
   overflow-y: auto;
 }
 
-.rhyme-results,
-.rhyme-section-body {
+* {
   scrollbar-width: thin;
   scrollbar-color: var(--ink-4) transparent;
 }
 
-.rhyme-results::-webkit-scrollbar,
-.rhyme-section-body::-webkit-scrollbar {
+*::-webkit-scrollbar {
   width: 6px;
+  height: 6px;
 }
 
-.rhyme-results::-webkit-scrollbar-track,
-.rhyme-section-body::-webkit-scrollbar-track {
+*::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.rhyme-results::-webkit-scrollbar-thumb,
-.rhyme-section-body::-webkit-scrollbar-thumb {
+*::-webkit-scrollbar-thumb {
   background: var(--rule-2);
   border-radius: 3px;
 }
 
-.rhyme-results::-webkit-scrollbar-thumb:hover,
-.rhyme-section-body::-webkit-scrollbar-thumb:hover {
+*::-webkit-scrollbar-thumb:hover {
   background: var(--ink-4);
 }
 
@@ -2564,17 +2574,6 @@ html, body, #root {
   max-width: 400px;
 }
 
-.selection-action-text {
-  font-family: var(--serif);
-  font-style: italic;
-  font-size: 12.5px;
-  color: var(--ink-3);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 160px;
-}
-
 .selection-action-btn {
   font-size: 11.5px;
   font-weight: 500;
@@ -2597,23 +2596,7 @@ html, body, #root {
 }
 .selection-action-btn--primary:hover { background: var(--accent-2); border-color: var(--accent-2); }
 
-/* ─── AI edit diff card (LyricEditor "Change this") ─── */
-.edit-diff-card {
-  position: absolute;
-  transform: translate(-50%, -100%);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  background: var(--panel);
-  border: 1px solid var(--rule);
-  border-radius: var(--r-md);
-  box-shadow: var(--shadow);
-  padding: 10px 12px;
-  z-index: 21;
-  max-width: 420px;
-  min-width: 220px;
-}
-
+/* ─── AI edit diff (inline in chat, "Change this" flow) ─── */
 .edit-diff-text {
   font-family: var(--serif);
   font-size: 14px;
@@ -2636,17 +2619,5 @@ html, body, #root {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
-}
-
-.edit-diff-error {
-  position: absolute;
-  bottom: 78px;
-  right: 40px;
-  font-size: 12px;
-  color: var(--danger, #c0392b);
-  background: var(--panel);
-  border: 1px solid var(--rule);
-  border-radius: var(--r-sm);
-  padding: 6px 10px;
-  z-index: 20;
+  margin-top: 8px;
 }

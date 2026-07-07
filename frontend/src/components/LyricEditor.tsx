@@ -1,14 +1,13 @@
 import { useState, useEffect, useRef, useCallback, forwardRef, useImperativeHandle, useMemo, useLayoutEffect } from "react";
 import { fetchAnalysis, type SyllableInfo, type ActiveGroup } from "../api/syllables";
 import { phonemeToColorIndex, getPhonemeColor, getSlantColor } from "../utils/phonemeColors";
-import { editSelection } from "../api/chat";
-import { diffWords } from "../utils/diffWords";
 import type { SpeechRecognitionEvent, SpeechRecognitionInstance } from "../types/speechRecognition";
 import { MicIcon } from "./icons";
 
 const RHYME_WORD_CAP = 5;
 
 const DEBOUNCE_MS = 400;
+const RENDER_DEBOUNCE_MS = 150;
 
 const EDITOR_STYLE = {
   fontFamily: "var(--serif)",
@@ -25,6 +24,7 @@ const EDITOR_STYLE = {
 
 export interface LyricEditorHandle {
   insertAtCursor: (text: string) => void;
+  replaceRange: (start: number, end: number, text: string) => void;
 }
 
 interface LyricEditorProps {
@@ -40,6 +40,7 @@ interface LyricEditorProps {
   onGroupsChange?: (groups: ActiveGroup[]) => void;
   onModeChange?: (mode: "rhymes" | "stress") => void;
   onSendToChat?: (text: string) => void;
+  onChangeThis?: (text: string, start: number, end: number) => void;
 }
 
 const SpeechRecognitionClass =
@@ -60,6 +61,7 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
       onGroupsChange,
       onModeChange,
       onSendToChat,
+      onChangeThis,
     }: LyricEditorProps,
     ref
   ) {
@@ -71,16 +73,6 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
     top: number;
     left: number;
   } | null>(null);
-  const [pendingEdit, setPendingEdit] = useState<{
-    start: number;
-    end: number;
-    original: string;
-    suggestion: string;
-    top: number;
-    left: number;
-  } | null>(null);
-  const [editLoading, setEditLoading] = useState(false);
-  const [editError, setEditError] = useState<string | null>(null);
   const [syllableData, setSyllableData] = useState<SyllableInfo[][][]>([]);
   const [syllableColorMap, setSyllableColorMap] = useState<Map<string, string>>(new Map());
   const [slantColorMap, setSlantColorMap] = useState<Map<number, string>>(new Map());
@@ -91,6 +83,34 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const contentRef = useRef(content);
   useEffect(() => { contentRef.current = content; }, [content]);
+
+  // Inserts/replaces via the browser's native editing command (when available) so the
+  // change lands on the textarea's own undo/redo stack, same as a real keystroke would -
+  // a plain onContentChange(next) bypasses that stack entirely.
+  const applyProgrammaticEdit = useCallback((start: number, end: number, text: string) => {
+    const el = textareaRef.current;
+    if (el && document.execCommand) {
+      el.focus();
+      el.setSelectionRange(start, end);
+      const applied = document.execCommand("insertText", false, text);
+      if (applied) return;
+    }
+    const value = contentRef.current;
+    onContentChange(value.slice(0, start) + text + value.slice(end));
+  }, [onContentChange]);
+
+  // ── Rendering (highlighting/counting) lags slightly behind raw typing so the
+  // textarea itself never stalls on the expensive mirror rebuild below ──────
+  const [renderContent, setRenderContent] = useState(content);
+  const renderDebounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (renderDebounceTimer.current !== null) clearTimeout(renderDebounceTimer.current);
+    renderDebounceTimer.current = setTimeout(() => setRenderContent(content), RENDER_DEBOUNCE_MS);
+    return () => {
+      if (renderDebounceTimer.current !== null) clearTimeout(renderDebounceTimer.current);
+    };
+  }, [content]);
+  // ──────────────────────────────────────────────────────────────────────
 
   // ── Line height measurement for wrap tracking ─────────────────────────
   const lineRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -106,7 +126,7 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
       prevHeightsRef.current = heights;
       setLineHeights([...heights]);
     }
-  });
+  }, [renderContent]);
   // ──────────────────────────────────────────────────────────────────────
 
   // ── Voice / speech ────────────────────────────────────────────────────
@@ -129,9 +149,8 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
           const pos = speechInsertPos.current;
           const cur = contentRef.current;
           const sep = pos > 0 && !cur.slice(0, pos).endsWith("\n") ? " " : "";
-          const next = cur.slice(0, pos) + sep + text + cur.slice(pos);
-          onContentChange(next);
-          speechInsertPos.current = pos + sep.length + text.length;
+          applyProgrammaticEdit(pos, pos, sep + text);
+          speechInsertPos.current = textareaRef.current?.selectionStart ?? pos + sep.length + text.length;
         }
       }
     };
@@ -154,15 +173,12 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
     insertAtCursor(text: string) {
       const el = textareaRef.current;
       if (!el) return;
-      const { selectionStart, selectionEnd, value } = el;
-      const next = value.slice(0, selectionStart) + text + value.slice(selectionEnd);
-      onContentChange(next);
-      requestAnimationFrame(() => {
-        el.selectionStart = el.selectionEnd = selectionStart + text.length;
-        el.focus();
-      });
+      applyProgrammaticEdit(el.selectionStart, el.selectionEnd, text);
     },
-  }), [onContentChange]);
+    replaceRange(start: number, end: number, text: string) {
+      applyProgrammaticEdit(start, end, text);
+    },
+  }), [applyProgrammaticEdit]);
 
   const [mode, setMode] = useState<"rhymes" | "stress">("rhymes");
   useEffect(() => { onModeChange?.(mode); }, [mode, onModeChange]);
@@ -225,7 +241,7 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
     el.style.height = el.scrollHeight + "px";
   }, [content]);
 
-  const lines = useMemo(() => content.split("\n"), [content]);
+  const lines = useMemo(() => renderContent.split("\n"), [renderContent]);
 
   const renderedLines = useMemo(() => {
     return lines.map((line, lineIdx) => {
@@ -468,32 +484,11 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
     }
   }
 
-  async function handleChangeThis() {
+  function handleChangeThis() {
     if (!selectionMenu) return;
-    const { text, start, end, top, left } = selectionMenu;
+    const { text, start, end } = selectionMenu;
     setSelectionMenu(null);
-    setEditLoading(true);
-    setEditError(null);
-    try {
-      const suggestion = await editSelection(text);
-      setPendingEdit({ start, end, original: text, suggestion, top, left });
-    } catch (e) {
-      setEditError(e instanceof Error ? e.message : "Failed to get a suggestion");
-    } finally {
-      setEditLoading(false);
-    }
-  }
-
-  function acceptEdit() {
-    if (!pendingEdit) return;
-    const { start, end, suggestion } = pendingEdit;
-    const value = contentRef.current;
-    onContentChange(value.slice(0, start) + suggestion + value.slice(end));
-    setPendingEdit(null);
-  }
-
-  function rejectEdit() {
-    setPendingEdit(null);
+    onChangeThis?.(text, start, end);
   }
 
   const baseLineH = parseFloat(lineHeight);
@@ -504,7 +499,6 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
       {/* ── Selection action menu ── */}
       {selectionMenu && onSendToChat && (
         <div className="selection-action-menu" style={{ top: selectionMenu.top, left: selectionMenu.left }}>
-          <span className="selection-action-text">"{selectionMenu.text}"</span>
           <button
             className="selection-action-btn"
             onMouseDown={(e) => e.preventDefault()}
@@ -515,46 +509,11 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
           <button
             className="selection-action-btn selection-action-btn--primary"
             onMouseDown={(e) => e.preventDefault()}
-            disabled={editLoading}
             onClick={handleChangeThis}
           >
-            {editLoading ? "Thinking…" : "Change this"}
+            Change this
           </button>
         </div>
-      )}
-
-      {/* ── Pending AI edit: inline diff, accept/reject ── */}
-      {pendingEdit && (
-        <div className="edit-diff-card" style={{ top: pendingEdit.top, left: pendingEdit.left }}>
-          <div className="edit-diff-text">
-            {diffWords(pendingEdit.original, pendingEdit.suggestion).map((tok, i) => (
-              <span
-                key={i}
-                className={
-                  tok.kind === "removed" ? "diff-removed" : tok.kind === "added" ? "diff-added" : undefined
-                }
-              >
-                {tok.text}
-              </span>
-            ))}
-          </div>
-          <div className="edit-diff-actions">
-            <button className="selection-action-btn" onMouseDown={(e) => e.preventDefault()} onClick={rejectEdit}>
-              Reject
-            </button>
-            <button
-              className="selection-action-btn selection-action-btn--primary"
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={acceptEdit}
-            >
-              Accept
-            </button>
-          </div>
-        </div>
-      )}
-
-      {editError && (
-        <div className="edit-diff-error">{editError}</div>
       )}
 
       {/* ── Toolbar ── */}
@@ -605,7 +564,7 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
             input.onchange = (ev) => {
               const file = (ev.target as HTMLInputElement).files?.[0];
               if (!file) return;
-              file.text().then((text) => onContentChange(text));
+              file.text().then((text) => applyProgrammaticEdit(0, contentRef.current.length, text));
             };
             input.click();
           }}

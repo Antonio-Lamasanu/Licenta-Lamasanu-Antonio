@@ -15,6 +15,7 @@ export type DockPreview =
   | null;
 
 const EDGE_ZONE_FRACTION = 0.28;
+const SIDE_NO_DOCK_FRACTION = 0.4;
 const SCREEN_SNAP_THRESHOLD = 40;
 const DEFAULT_WIDTH = 380;
 const DEFAULT_HEIGHT = 480;
@@ -106,10 +107,11 @@ export function useChatDock(
       }
 
       const sideRect = rightColumnRef.current?.getBoundingClientRect();
+      const noDockX = sideRect ? sideRect.right - sideRect.width * SIDE_NO_DOCK_FRACTION : 0;
       if (
         sideRect &&
         clientX >= sideRect.left &&
-        clientX <= sideRect.right &&
+        clientX <= noDockX &&
         clientY >= sideRect.top &&
         clientY <= sideRect.bottom
       ) {

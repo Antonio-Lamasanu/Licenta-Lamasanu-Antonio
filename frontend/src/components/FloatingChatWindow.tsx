@@ -7,6 +7,7 @@ interface FloatingChatWindowProps {
   y: number;
   width: number;
   height: number;
+  isDark: boolean;
   onDragStart: (e: React.MouseEvent) => void;
   onResizeStart: (e: React.MouseEvent) => void;
   onClose: () => void;
@@ -18,13 +19,17 @@ export default function FloatingChatWindow({
   y,
   width,
   height,
+  isDark,
   onDragStart,
   onResizeStart,
   onClose,
   children,
 }: FloatingChatWindowProps) {
   return createPortal(
-    <div className="floating-chat-window" style={{ left: x, top: y, width, height }}>
+    <div
+      className={`floating-chat-window${isDark ? " theme-dark" : ""}`}
+      style={{ left: x, top: y, width, height }}
+    >
       <ChatDockHeader onDragStart={onDragStart} onClose={onClose} />
       <div className="floating-chat-body">{children}</div>
       <div

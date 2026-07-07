@@ -108,17 +108,6 @@ export async function streamChatTurn(
   }
 }
 
-export async function editSelection(text: string, instruction?: string): Promise<string> {
-  const res = await apiFetch(`/api/edit-selection`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text, instruction: instruction ?? null }),
-  });
-  if (!res.ok) return extractError(res, `Edit selection API error: ${res.status}`);
-  const data = (await res.json()) as { result: string };
-  return data.result;
-}
-
 export async function fetchProfile(): Promise<UserProfile> {
   const res = await apiFetch(`/api/profile`);
   if (!res.ok) return extractError(res, `Profile API error: ${res.status}`);

@@ -2,8 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { ChatSession, ChatTurn } from "../api/chat";
+import type { EditSuggestion } from "../App";
 import { CHAT_CATEGORIES } from "../utils/chatModes";
 import { useSpeechToText } from "../hooks/useSpeechToText";
+import { diffWords } from "../utils/diffWords";
 import { MicIcon } from "./icons";
 
 interface ChatPanelProps {
@@ -18,6 +20,9 @@ interface ChatPanelProps {
   injectText: { text: string; seq: number } | null;
   showMinimizeButton: boolean;
   onMinimize: () => void;
+  editSuggestions: Map<number, EditSuggestion>;
+  onAcceptEdit: (turnId: number) => void;
+  onRejectEdit: (turnId: number) => void;
 }
 
 export default function ChatPanel({
@@ -32,12 +37,16 @@ export default function ChatPanel({
   injectText,
   showMinimizeButton,
   onMinimize,
+  editSuggestions,
+  onAcceptEdit,
+  onRejectEdit,
 }: ChatPanelProps) {
   const [draft, setDraft] = useState("");
   const [openCategory, setOpenCategory] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const threadRef = useRef<HTMLDivElement>(null);
   const lastInjectSeq = useRef<number | null>(null);
+  const categoryRowRef = useRef<HTMLDivElement>(null);
 
   function appendToDraft(text: string) {
     setDraft((prev) => (prev ? prev.trimEnd() + "\n\n" + text : text));
@@ -56,6 +65,17 @@ export default function ChatPanel({
   useEffect(() => {
     threadRef.current?.scrollTo({ top: threadRef.current.scrollHeight, behavior: "smooth" });
   }, [turns, sending, pendingUserText, streamingText]);
+
+  useEffect(() => {
+    if (openCategory === null) return;
+    function handleOutsideClick(e: MouseEvent) {
+      if (categoryRowRef.current && !categoryRowRef.current.contains(e.target as Node)) {
+        setOpenCategory(null);
+      }
+    }
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, [openCategory]);
 
   function handleSend() {
     const content = draft.trim();
@@ -83,7 +103,7 @@ export default function ChatPanel({
   const isEmpty = !loadingTurns && turns.length === 0 && !sending;
 
   const categoryRow = (
-    <div className="chat-shortcuts">
+    <div className="chat-shortcuts" ref={categoryRowRef}>
       {CHAT_CATEGORIES.map((cat) => (
         <div key={cat.id} className="chat-category">
           <button
@@ -172,14 +192,45 @@ export default function ChatPanel({
       {minimizeButton}
       <div className="chat-thread" ref={threadRef}>
         {loadingTurns && <div className="chat-loading">Loading…</div>}
-        {turns.map((t) => (
-          <div key={t.id} className={`chat-bubble chat-bubble--${t.role}`}>
-            <div className="chat-bubble-role">{t.role === "user" ? "You" : "Rhymathic"}</div>
-            <div className="chat-bubble-content">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{t.content}</ReactMarkdown>
+        {turns.map((t) => {
+          const editSuggestion = editSuggestions.get(t.id);
+          return (
+            <div key={t.id} className={`chat-bubble chat-bubble--${t.role}`}>
+              <div className="chat-bubble-role">{t.role === "user" ? "You" : "Rhymathic"}</div>
+              {editSuggestion ? (
+                <>
+                  <div className="chat-bubble-content edit-diff-text">
+                    {diffWords(editSuggestion.original, editSuggestion.suggestion).map((tok, i) => (
+                      <span
+                        key={i}
+                        className={
+                          tok.kind === "removed" ? "diff-removed" : tok.kind === "added" ? "diff-added" : undefined
+                        }
+                      >
+                        {tok.text}
+                      </span>
+                    ))}
+                  </div>
+                  <div className="edit-diff-actions">
+                    <button className="selection-action-btn" onClick={() => onRejectEdit(t.id)}>
+                      Reject
+                    </button>
+                    <button
+                      className="selection-action-btn selection-action-btn--primary"
+                      onClick={() => onAcceptEdit(t.id)}
+                    >
+                      Accept
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div className="chat-bubble-content">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{t.content}</ReactMarkdown>
+                </div>
+              )}
             </div>
-          </div>
-        ))}
+          );
+        })}
         {pendingUserText !== null && (
           <div className="chat-bubble chat-bubble--user">
             <div className="chat-bubble-role">You</div>
