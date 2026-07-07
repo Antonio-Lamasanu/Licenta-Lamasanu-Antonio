@@ -31,6 +31,7 @@ interface ChatPanelProps {
   showNoteContextHint: boolean;
   onDismissNoteContextHint: () => void;
   onInsertFullNote: () => void;
+  noteInsertDisabled: boolean;
 }
 
 export default function ChatPanel({
@@ -55,6 +56,7 @@ export default function ChatPanel({
   showNoteContextHint,
   onDismissNoteContextHint,
   onInsertFullNote,
+  noteInsertDisabled,
 }: ChatPanelProps) {
   const [draft, setDraft] = useState("");
   const [openCategory, setOpenCategory] = useState<string | null>(null);
@@ -79,6 +81,13 @@ export default function ChatPanel({
       appendToDraft(injectText.text);
     }
   }, [injectText]);
+
+  useLayoutEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [draft]);
 
   useEffect(() => {
     threadRef.current?.scrollTo({ top: threadRef.current.scrollHeight, behavior: "smooth" });
@@ -215,7 +224,7 @@ export default function ChatPanel({
     <div className="chat-context-hint">
       <span>Tip: insert the full note first so the rewrite fits the rest of the song.</span>
       <div className="chat-context-hint-actions">
-        <button className="chat-context-hint-btn" onClick={onInsertFullNote}>
+        <button className="chat-context-hint-btn" onClick={onInsertFullNote} disabled={noteInsertDisabled}>
           Insert full note
         </button>
         <button className="chat-context-hint-dismiss" onClick={onDismissNoteContextHint} aria-label="Dismiss">

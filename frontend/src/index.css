@@ -544,8 +544,10 @@ html, body, #root {
 /* ─── Toolbar ─── */
 .editor-toolbar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 4px;
+  row-gap: 6px;
   padding: 8px 36px;
   border-bottom: 1px solid var(--rule);
   background: var(--panel);
@@ -1121,13 +1123,17 @@ html, body, #root {
   left: 50%;
   transform: translateX(-50%);
   white-space: nowrap;
-  font-size: 8px;
+  font-size: 11px;
   line-height: 1;
   color: var(--ink-4);
   pointer-events: none;
   user-select: none;
   font-family: var(--mono);
   letter-spacing: 0.03em;
+}
+
+.lyric-body--phonemes .word-annotation {
+  margin-right: 6px;
 }
 
 /* ─── Wave 2: Rhyme mode row ─── */
@@ -2546,6 +2552,7 @@ html, body, #root {
   white-space: nowrap;
 }
 .chat-context-hint-btn:hover { background: var(--bg-deep); }
+.chat-context-hint-btn:disabled { opacity: 0.5; cursor: default; }
 
 .chat-context-hint-dismiss {
   display: flex;
@@ -2581,6 +2588,8 @@ html, body, #root {
   border-radius: var(--r-md);
   padding: 10px 12px;
   resize: none;
+  max-height: 240px;
+  overflow-y: auto;
 }
 .chat-composer-input:focus { outline: none; border-color: var(--accent-2); }
 

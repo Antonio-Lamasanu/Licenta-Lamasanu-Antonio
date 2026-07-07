@@ -21,6 +21,8 @@ import type { User } from "./api/auth";
 
 export type { EditSuggestion, ResolvedEdit };
 
+const NOTE_INSERT_COOLDOWN_MS = 2500;
+
 function Wordmark({ isDark }: { isDark: boolean }) {
   return (
     <div className="wordmark">
@@ -58,6 +60,9 @@ export default function App({ user, onLogout, justRegistered }: AppProps) {
   // ── Rhyme query + auto mode ──
   const [rhymeQuery, setRhymeQuery] = useState("");
   const [autoMode, setAutoMode] = useState(false);
+
+  // ── Chat "insert note" cooldown, to avoid accidental duplicate inserts ──
+  const [noteInsertCooldown, setNoteInsertCooldown] = useState(false);
 
   // ── Active rhyme groups ──
   const [activeGroups, setActiveGroups] = useState<ActiveGroup[]>([]);
@@ -218,6 +223,12 @@ export default function App({ user, onLogout, justRegistered }: AppProps) {
     setActiveTab(tab);
   }
 
+  function handleInsertFullNote() {
+    injectIntoChat(activeContent, "Full note");
+    setNoteInsertCooldown(true);
+    setTimeout(() => setNoteInsertCooldown(false), NOTE_INSERT_COOLDOWN_MS);
+  }
+
   const themeToggleTitle = `Theme: ${themeMode} — click to cycle`;
 
   const dockedInMain = chatDock.mode === "main" && activeTab !== "chat";
@@ -251,8 +262,9 @@ export default function App({ user, onLogout, justRegistered }: AppProps) {
         onDismissNoteContextHint={() => setNoteContextHint(false)}
         onInsertFullNote={() => {
           setNoteContextHint(false);
-          void injectIntoChat(activeContent, "Full note");
+          handleInsertFullNote();
         }}
+        noteInsertDisabled={!activeContent || noteInsertCooldown}
       />
     );
   }
@@ -286,9 +298,13 @@ export default function App({ user, onLogout, justRegistered }: AppProps) {
                 </div>
                 <button
                   className="editor-meta-btn editor-meta-btn--highlight"
-                  onClick={() => injectIntoChat(activeContent, "Full note")}
-                  disabled={!activeContent}
-                  title="Insert this note into the current chat"
+                  onClick={handleInsertFullNote}
+                  disabled={!activeContent || noteInsertCooldown}
+                  title={
+                    noteInsertCooldown
+                      ? "Just inserted — wait a moment before inserting again"
+                      : "Insert this note into the current chat"
+                  }
                 >
                   Insert into Chat
                 </button>

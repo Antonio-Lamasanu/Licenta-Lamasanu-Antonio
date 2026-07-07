@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, forwardRef, useImperativeHandle, useMemo, useLayoutEffect } from "react";
+import type { CSSProperties } from "react";
 import type { ActiveGroup } from "../api/syllables";
 import { getPhonemeColor, phonemeToColorIndex } from "../utils/phonemeColors";
 import type { SpeechRecognitionEvent, SpeechRecognitionInstance } from "../types/speechRecognition";
@@ -305,55 +306,41 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
               ? (isDarkTheme ? "rgba(255,200,80,0.40)" : "rgba(200,150,40,0.20)")
               : undefined;
 
-          // In stress mode, suppress rhyme coloring entirely
-          if (!effectiveShowStress && phonemeKey !== undefined && !isFiltered) {
-            const palette = getPhonemeColor(phonemeKey, isDarkTheme);
-            if (effectiveRhymeMode === "underline") {
-              return (
-                <span key={si} style={{
-                  borderBottom: `4px solid ${palette.ink}`,
-                  color: "inherit",
-                }}>
-                  {syl.text}
-                </span>
-              );
-            }
-            return (
-              <span key={si} style={{
-                backgroundColor: palette.bg,
-                color: palette.ink,
-                borderRadius: "3px",
-                boxShadow: `0 0 0 1px ${palette.bg}`,
-              }}>
-                {syl.text}
-              </span>
-            );
-          }
-
-          // Slant rhyme — last syllable of the word (ambient, not filterable). Evaluated
-          // for every word in the document, not just line endings. Treatment is the
-          // inverse of perfect rhymes so the two never compete for the same visual
-          // channel: highlight mode fills perfect rhymes and underlines slant rhymes;
-          // underline mode underlines perfect rhymes and fills slant rhymes.
+          // Perfect rhymes and slant rhymes use opposite visual channels so a word that
+          // belongs to both can show both at once: highlight mode fills perfect rhymes
+          // and underlines slant rhymes; underline mode underlines perfect rhymes and
+          // fills slant rhymes. Slant is evaluated on the last syllable of every word in
+          // the document (ambient, not filterable), independent of the perfect check.
+          const hasPerfect = !effectiveShowStress && phonemeKey !== undefined && !isFiltered;
           const isLastSyl = si === wordSyls.length - 1;
-          if (!effectiveShowStress && slantInfo !== undefined && isLastSyl) {
-            const slantPalette = getPhonemeColor(slantInfo.key, isDarkTheme);
-            if (effectiveRhymeMode === "highlight") {
-              return (
-                <span key={si} style={{
-                  borderBottom: `4px solid ${slantPalette.ink}`,
-                }}>
-                  {syl.text}
-                </span>
-              );
+          const hasSlant = !effectiveShowStress && slantInfo !== undefined && isLastSyl;
+
+          if (hasPerfect || hasSlant) {
+            const style: CSSProperties = { color: "inherit" };
+            if (hasPerfect) {
+              const palette = getPhonemeColor(phonemeKey!, isDarkTheme);
+              if (effectiveRhymeMode === "underline") {
+                style.borderBottom = `4px solid ${palette.ink}`;
+              } else {
+                style.backgroundColor = palette.bg;
+                style.color = palette.ink;
+                style.borderRadius = "3px";
+                style.boxShadow = `0 0 0 1px ${palette.bg}`;
+              }
+            }
+            if (hasSlant) {
+              const slantPalette = getPhonemeColor(slantInfo!.key, isDarkTheme);
+              if (effectiveRhymeMode === "highlight") {
+                style.borderBottom = `4px solid ${slantPalette.ink}`;
+              } else {
+                style.backgroundColor = slantPalette.bg;
+                style.color = slantPalette.ink;
+                style.borderRadius = "3px";
+                style.boxShadow = `0 0 0 1px ${slantPalette.bg}`;
+              }
             }
             return (
-              <span key={si} style={{
-                backgroundColor: slantPalette.bg,
-                color: slantPalette.ink,
-                borderRadius: "3px",
-                boxShadow: `0 0 0 1px ${slantPalette.bg}`,
-              }}>
+              <span key={si} style={style}>
                 {syl.text}
               </span>
             );
@@ -497,7 +484,7 @@ const LyricEditor = forwardRef<LyricEditorHandle, LyricEditorProps>(
           >{effectiveRhymeMode === "highlight" ? "Highlight" : "Underline"}</button>
           <span className="toolbar-hint">
             {effectiveRhymeMode === "highlight"
-              ? "Highlighting perfect rhymes? Underlines mark the slant ones."
+              ? "Highlighting perfect rhymes? Underlines mark the slant ones and vice-versa."
               : "Underlining perfect rhymes? Highlights mark the slant ones."}
           </span>
         </div>
